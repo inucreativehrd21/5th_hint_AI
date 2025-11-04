@@ -61,10 +61,12 @@ class VLLMHintApp:
     def load_problem(self, problem_selection: str):
         """선택된 문제 로드"""
         if not problem_selection:
+            print("⚠️ [load_problem] 문제가 선택되지 않음")
             return "문제를 선택하세요.", "", None
 
         try:
             problem_id = int(problem_selection.split('#')[1].split(' -')[0].strip())
+            print(f"✅ [load_problem] 문제 ID 파싱 성공: {problem_id}")
 
             self.current_problem = None
             for p in self.problems:
@@ -73,13 +75,17 @@ class VLLMHintApp:
                     break
 
             if not self.current_problem:
+                print(f"❌ [load_problem] 문제를 찾을 수 없음: {problem_id}")
                 return "❌ 문제를 찾을 수 없습니다.", "", None
 
+            print(f"✅ [load_problem] 문제 로드 완료: {self.current_problem['title']}")
             problem_md = self._format_problem_display()
             # 문제 ID를 정수로 State에 저장
+            print(f"✅ [load_problem] State에 저장할 problem_id: {problem_id} (타입: {type(problem_id).__name__})")
             return problem_md, "# 여기에 코드를 작성하세요\n", problem_id
 
         except Exception as e:
+            print(f"❌ [load_problem] 예외 발생: {str(e)}")
             return f"❌ 오류: {str(e)}", "", None
 
     def _format_problem_display(self) -> str:
@@ -111,8 +117,14 @@ class VLLMHintApp:
 
     def generate_hint(self, user_code: str, temperature: float, problem_id):
         """힌트 생성 (vLLM 사용)"""
+        print(f"\n🔍 [generate_hint] 호출됨")
+        print(f"   - user_code 길이: {len(user_code.strip())} 글자")
+        print(f"   - temperature: {temperature}")
+        print(f"   - problem_id: {problem_id} (타입: {type(problem_id).__name__})")
+        
         # problem_id 검증 (None 또는 빈 값 체크)
         if problem_id is None:
+            print("❌ [generate_hint] problem_id가 None임")
             return "❌ 먼저 문제를 선택해주세요.", ""
         
         # problem_id로 문제 찾기 (정수 비교)
@@ -123,14 +135,21 @@ class VLLMHintApp:
                 break
         
         if not self.current_problem:
+            print(f"❌ [generate_hint] 문제를 찾을 수 없음 (ID: {problem_id})")
+            print(f"   사용 가능한 문제 ID 목록: {[p['problem_id'] for p in self.problems[:5]]}...")
             return f"❌ 문제를 찾을 수 없습니다. (ID: {problem_id})", ""
 
+        print(f"✅ [generate_hint] 문제 찾음: {self.current_problem['title']}")
+
         if not user_code.strip():
+            print("❌ [generate_hint] 코드가 비어있음")
             return "❌ 코드를 입력해주세요.", ""
 
         if not self.current_model:
+            print("❌ [generate_hint] vLLM 모델 연결 안됨")
             return "❌ vLLM 서버에 연결되지 않았습니다. 서버를 시작하세요.", ""
 
+        print("✅ [generate_hint] 모든 검증 통과, 프롬프트 생성 중...")
         # 프롬프트 생성
         prompt = self._create_hint_prompt(user_code)
 
@@ -257,6 +276,9 @@ def create_vllm_ui(app: VLLMHintApp):
         
         # 문제 ID를 저장하는 State (숨겨진 상태)
         current_problem_id = gr.State(value=None)
+        
+        # 디버깅: 현재 선택된 문제 ID 표시
+        debug_info = gr.Markdown("_문제를 선택하면 여기에 ID가 표시됩니다_", visible=True)
 
         gr.Markdown("---")
 
@@ -295,13 +317,29 @@ def create_vllm_ui(app: VLLMHintApp):
         gr.Markdown("## 📊 성능 메트릭")
         metrics_output = gr.Markdown("_추론 성능이 여기에 표시됩니다_")
 
+        # 헬퍼 함수: 디버그 정보 업데이트
+        def update_debug_info(problem_id):
+            """디버그 정보 표시"""
+            if problem_id is None:
+                return "⚠️ **현재 선택된 문제:** 없음 (먼저 문제를 불러오세요)"
+            return f"✅ **현재 선택된 문제 ID:** `{problem_id}` (타입: `{type(problem_id).__name__}`)"
+        
         # 이벤트 핸들러
-        load_btn.click(
+        # 1. 문제 불러오기 버튼
+        load_result = load_btn.click(
             fn=app.load_problem,
             inputs=[problem_dropdown],
             outputs=[problem_display, user_code, current_problem_id]
         )
+        
+        # 2. 문제 로드 후 디버그 정보 업데이트
+        load_result.then(
+            fn=update_debug_info,
+            inputs=[current_problem_id],
+            outputs=[debug_info]
+        )
 
+        # 3. 힌트 생성 버튼
         hint_btn.click(
             fn=app.generate_hint,
             inputs=[user_code, temperature_slider, current_problem_id],
