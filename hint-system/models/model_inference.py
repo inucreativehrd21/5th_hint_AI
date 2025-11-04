@@ -351,13 +351,25 @@ class VLLMInference(ModelInference):
         self.max_retries = max_retries
         self.retry_delay = retry_delay
 
-        # OpenAI 클라이언트 초기화 (connection pooling 포함)
-        self.client = OpenAI(
-            base_url=base_url,
-            api_key="dummy",  # vLLM은 API key가 필요없지만 클라이언트 초기화를 위해 필요
-            timeout=timeout,
-            max_retries=max_retries
-        )
+        # OpenAI 클라이언트 초기화 (vLLM 서버용)
+        try:
+            self.client = OpenAI(
+                base_url=base_url,
+                api_key="dummy",  # vLLM은 API key가 필요없지만 클라이언트 초기화를 위해 필요
+                timeout=timeout,
+                max_retries=max_retries
+            )
+        except TypeError as e:
+            # OpenAI 클라이언트 버전 호환성 문제 해결
+            if "proxies" in str(e):
+                print(f"⚠️  OpenAI 클라이언트 초기화 오류 (proxies 인자 문제): {e}")
+                print(f"   기본 설정으로 재시도...")
+                self.client = OpenAI(
+                    base_url=base_url,
+                    api_key="dummy"
+                )
+            else:
+                raise
 
         # 서버 연결 확인
         self._check_server_health()
