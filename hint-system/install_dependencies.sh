@@ -6,6 +6,11 @@ echo "========================================="
 echo "Installing hint-system dependencies"
 echo "========================================="
 
+# 0) 기존 충돌 패키지 정리 (깨끗한 설치 보장)
+echo "Step 0/6: Cleaning up conflicting packages..."
+pip uninstall -y gradio tomlkit pyairports transformers openai 2>/dev/null || true
+echo "✅ Cleanup complete"
+
 # 1) pip 업그레이드
 echo "Step 1/6: Upgrading pip..."
 pip install --upgrade pip setuptools wheel
