@@ -16,27 +16,27 @@ echo "✅ Deep cleanup complete"
 echo "Step 1/7: Upgrading pip..."
 pip install --upgrade pip setuptools wheel
 
-# 2) torch 먼저 설치 (vLLM 호환 버전)
-echo "Step 2/7: Installing PyTorch 2.4.0+cu121..."
-pip install --no-cache-dir torch==2.4.0 --index-url https://download.pytorch.org/whl/cu121
+# 2) torch 먼저 설치 (vLLM 호환 버전 - 정확한 버전)
+echo "Step 2/7: Installing PyTorch 2.4.0+cu121 (CUDA 12.1)..."
+pip install --no-cache-dir torch==2.4.0 torchvision==0.19.0 --index-url https://download.pytorch.org/whl/cu121
 
-# 3) vLLM 설치 (torch 이미 설치됨)
-echo "Step 3/7: Installing vLLM 0.6.3..."
+# 3) xformers 정확한 버전 설치
+echo "Step 3/7: Installing xformers 0.0.27.post2..."
+pip install --no-cache-dir xformers==0.0.27.post2 --index-url https://download.pytorch.org/whl/cu121
+
+# 4) vLLM 설치 (의존성 제외, torch/xformers 이미 설치됨)
+echo "Step 4/7: Installing vLLM 0.6.3..."
 pip install --no-cache-dir vllm==0.6.3 --no-deps
-pip install --no-cache-dir xformers psutil numpy ray
+pip install --no-cache-dir psutil numpy ray msgspec fastapi uvicorn pydantic
 
-# 4) pyairports 문제 해결 (airportsdata 설치)
-echo "Step 4/7: Fixing pyairports import error..."
+# 5) pyairports 문제 해결 (airportsdata 설치)
+echo "Step 5/7: Fixing pyairports import error..."
 pip uninstall pyairports -y 2>/dev/null || true
 pip install --no-cache-dir airportsdata
 
-# 5) 나머지 의존성 설치
-echo "Step 5/7: Installing remaining requirements..."
+# 6) 나머지 의존성 설치
+echo "Step 6/7: Installing remaining requirements..."
 pip install --no-cache-dir --timeout=300 -r requirements.txt
-
-# 6) vLLM 의존성 재확인
-echo "Step 6/7: Verifying vLLM dependencies..."
-pip install --no-cache-dir --upgrade msgspec fastapi uvicorn pydantic
 
 # 7) 검증
 echo "Step 7/7: Verifying installation..."
