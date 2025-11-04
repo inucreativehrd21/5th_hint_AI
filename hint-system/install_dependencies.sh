@@ -6,30 +6,40 @@ echo "========================================="
 echo "Installing hint-system dependencies"
 echo "========================================="
 
-# 0) 기존 충돌 패키지 정리 (깨끗한 설치 보장)
-echo "Step 0/6: Cleaning up conflicting packages..."
-pip uninstall -y gradio tomlkit pyairports transformers openai outlines 2>/dev/null || true
-echo "✅ Cleanup complete (outlines removed to avoid guided_decoding hang)"
+# 0) 기존 충돌 패키지 완전 정리 (깨끗한 설치 보장)
+echo "Step 0/7: Deep cleaning conflicting packages..."
+pip uninstall -y vllm torch torchvision torchaudio gradio tomlkit pyairports transformers openai outlines xformers 2>/dev/null || true
+pip cache purge 2>/dev/null || true
+echo "✅ Deep cleanup complete"
 
 # 1) pip 업그레이드
-echo "Step 1/6: Upgrading pip..."
+echo "Step 1/7: Upgrading pip..."
 pip install --upgrade pip setuptools wheel
 
-# 2) vLLM 먼저 설치 (torch 2.4.0 포함)
-echo "Step 2/6: Installing vLLM with torch 2.4.0 (5-10 minutes)..."
-pip install --no-cache-dir vllm==0.6.3
+# 2) torch 먼저 설치 (vLLM 호환 버전)
+echo "Step 2/7: Installing PyTorch 2.4.0+cu121..."
+pip install --no-cache-dir torch==2.4.0 --index-url https://download.pytorch.org/whl/cu121
 
-# 3) pyairports 문제 해결 (airportsdata 설치)
-echo "Step 3/6: Fixing pyairports import error..."
+# 3) vLLM 설치 (torch 이미 설치됨)
+echo "Step 3/7: Installing vLLM 0.6.3..."
+pip install --no-cache-dir vllm==0.6.3 --no-deps
+pip install --no-cache-dir xformers psutil numpy ray
+
+# 4) pyairports 문제 해결 (airportsdata 설치)
+echo "Step 4/7: Fixing pyairports import error..."
 pip uninstall pyairports -y 2>/dev/null || true
-pip install airportsdata
+pip install --no-cache-dir airportsdata
 
-# 4) 나머지 의존성 설치
-echo "Step 4/6: Installing remaining requirements..."
+# 5) 나머지 의존성 설치
+echo "Step 5/7: Installing remaining requirements..."
 pip install --no-cache-dir --timeout=300 -r requirements.txt
 
-# 5) 검증
-echo "Step 5/6: Verifying installation..."
+# 6) vLLM 의존성 재확인
+echo "Step 6/7: Verifying vLLM dependencies..."
+pip install --no-cache-dir --upgrade msgspec fastapi uvicorn pydantic
+
+# 7) 검증
+echo "Step 7/7: Verifying installation..."
 echo "Testing core imports..."
 python -c "
 import sys
