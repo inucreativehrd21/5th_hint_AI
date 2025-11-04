@@ -61,7 +61,7 @@ class VLLMHintApp:
     def load_problem(self, problem_selection: str):
         """선택된 문제 로드"""
         if not problem_selection:
-            return "문제를 선택하세요.", ""
+            return "문제를 선택하세요.", "", None
 
         try:
             problem_id = problem_selection.split('#')[1].split(' -')[0].strip()
@@ -73,13 +73,14 @@ class VLLMHintApp:
                     break
 
             if not self.current_problem:
-                return "❌ 문제를 찾을 수 없습니다.", ""
+                return "❌ 문제를 찾을 수 없습니다.", "", None
 
             problem_md = self._format_problem_display()
-            return problem_md, "# 여기에 코드를 작성하세요\n"
+            # 문제 ID를 State로 반환하여 저장
+            return problem_md, "# 여기에 코드를 작성하세요\n", problem_id
 
         except Exception as e:
-            return f"❌ 오류: {str(e)}", ""
+            return f"❌ 오류: {str(e)}", "", None
 
     def _format_problem_display(self) -> str:
         """문제 표시 포맷"""
@@ -108,10 +109,20 @@ class VLLMHintApp:
 
         return md
 
-    def generate_hint(self, user_code: str, temperature: float):
+    def generate_hint(self, user_code: str, temperature: float, problem_id: str):
         """힌트 생성 (vLLM 사용)"""
-        if not self.current_problem:
+        # problem_id로 문제 다시 찾기
+        if not problem_id:
             return "❌ 먼저 문제를 선택해주세요.", ""
+        
+        self.current_problem = None
+        for p in self.problems:
+            if str(p['problem_id']) == str(problem_id):
+                self.current_problem = p
+                break
+        
+        if not self.current_problem:
+            return "❌ 문제를 찾을 수 없습니다. 문제를 다시 선택해주세요.", ""
 
         if not user_code.strip():
             return "❌ 코드를 입력해주세요.", ""
@@ -242,6 +253,9 @@ def create_vllm_ui(app: VLLMHintApp):
             load_btn = gr.Button("📂 불러오기", variant="primary", scale=1)
 
         problem_display = gr.Markdown("")
+        
+        # 문제 ID를 저장하는 State (숨겨진 상태)
+        current_problem_id = gr.State(value=None)
 
         gr.Markdown("---")
 
@@ -284,12 +298,12 @@ def create_vllm_ui(app: VLLMHintApp):
         load_btn.click(
             fn=app.load_problem,
             inputs=[problem_dropdown],
-            outputs=[problem_display, user_code]
+            outputs=[problem_display, user_code, current_problem_id]
         )
 
         hint_btn.click(
             fn=app.generate_hint,
-            inputs=[user_code, temperature_slider],
+            inputs=[user_code, temperature_slider, current_problem_id],
             outputs=[hint_output, metrics_output]
         )
 
