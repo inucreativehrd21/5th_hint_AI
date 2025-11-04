@@ -134,7 +134,7 @@ def main():
             "--tensor-parallel-size", str(args.tensor_parallel_size),
             "--dtype", args.dtype,
             "--max-num-seqs", str(args.max_num_seqs),
-            "--guided-decoding-backend", "lm-format-enforcer",  # outlines 대신 lm-format-enforcer 사용
+            "--disable-log-requests",  # 로그 간소화
         ]
 
         if args.trust_remote_code:
