@@ -24,8 +24,9 @@ protobuf==4.25.3
 # vLLM Dependencies Fix
 # ============================================================================
 # vLLM은 별도 설치: pip install vllm==0.6.3
-# pyairports 0.0.1 문제 해결: pip install airportsdata
-# airportsdata는 install_dependencies.sh에서 자동 설치됨
+# pyairports 0.0.1 문제 해결: airportsdata 사용
+# outlines가 pyairports를 요구하지만 실제로는 airportsdata로 대체 가능
+airportsdata
 
 # Quantization support
 bitsandbytes==0.44.1
