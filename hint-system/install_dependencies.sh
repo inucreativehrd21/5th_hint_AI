@@ -10,25 +10,21 @@ echo "========================================="
 echo "Step 1/6: Upgrading pip..."
 pip install --upgrade pip setuptools wheel
 
-# 2) 충돌 해결: tomlkit 먼저 업그레이드
-echo "Step 2/6: Fixing dependency conflicts..."
-pip install --upgrade tomlkit
-
-# 3) vLLM 먼저 설치 (torch 2.4.0 포함)
-echo "Step 3/6: Installing vLLM with torch 2.4.0 (5-10 minutes)..."
+# 2) vLLM 먼저 설치 (torch 2.4.0 포함)
+echo "Step 2/6: Installing vLLM with torch 2.4.0 (5-10 minutes)..."
 pip install --no-cache-dir vllm==0.6.3
 
-# 4) pyairports 문제 해결 (airportsdata로 대체)
-echo "Step 4/6: Fixing pyairports import error..."
+# 3) pyairports 문제 해결 (airportsdata 설치)
+echo "Step 3/6: Fixing pyairports import error..."
 pip uninstall pyairports -y 2>/dev/null || true
 pip install airportsdata
 
-# 5) 나머지 의존성 설치
-echo "Step 5/6: Installing remaining requirements..."
+# 4) 나머지 의존성 설치
+echo "Step 4/6: Installing remaining requirements..."
 pip install --no-cache-dir --timeout=300 -r requirements.txt
 
-# 6) 검증
-echo "Step 6/6: Verifying installation..."
+# 5) 검증
+echo "Step 5/6: Verifying installation..."
 python -c "import torch; import vllm; import gradio; print('✅ All imports successful')"
 
 echo "========================================="

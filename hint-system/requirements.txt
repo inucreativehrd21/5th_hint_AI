@@ -4,14 +4,16 @@
 # 자동 설치: bash install_dependencies.sh
 # 
 # 수동 설치:
-# 1. pip install --upgrade pip tomlkit
+# 1. pip install --upgrade pip
 # 2. pip install vllm==0.6.3 --no-cache-dir
 # 3. pip uninstall pyairports -y && pip install airportsdata
 # 4. pip install -r requirements.txt
+# 
+# 주의: tomlkit은 gradio가 자동으로 0.12.0 버전을 설치합니다.
 # ============================================================================
 
-# UI Framework (최신 버전으로 업그레이드 - tomlkit 충돌 해결)
-gradio>=4.44.0
+# UI Framework
+gradio==4.44.0
 
 # Core dependencies (vLLM이 torch 2.4.0 설치함)
 transformers==4.45.0
