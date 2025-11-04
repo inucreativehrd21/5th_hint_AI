@@ -372,6 +372,13 @@ class VLLMInference(ModelInference):
             if available_models:
                 print(f"✓ vLLM server connected at {self.base_url}")
                 print(f"  Available models: {', '.join(available_models)}")
+                
+                # 서버에 요청한 모델이 없으면 첫 번째 사용 가능한 모델로 자동 설정
+                if self.model_name not in available_models:
+                    old_name = self.model_name
+                    self.model_name = available_models[0]
+                    print(f"⚠ Model '{old_name}' not found. Using '{self.model_name}' instead.")
+                
                 return True
             else:
                 print(f"⚠ vLLM server at {self.base_url} has no models loaded")
