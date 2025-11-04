@@ -268,7 +268,8 @@ def create_vllm_ui(app: VLLMHintApp):
                 choices=app.get_problem_list(),
                 label="📚 문제 선택",
                 interactive=True,
-                scale=3
+                scale=3,
+                value=None  # 명시적 초기값
             )
             load_btn = gr.Button("📂 불러오기", variant="primary", scale=1)
 
@@ -278,7 +279,7 @@ def create_vllm_ui(app: VLLMHintApp):
         current_problem_id = gr.State(value=None)
         
         # 디버깅: 현재 선택된 문제 ID 표시
-        debug_info = gr.Markdown("_문제를 선택하면 여기에 ID가 표시됩니다_", visible=True)
+        debug_info = gr.Markdown("⚠️ **현재 선택된 문제:** 없음 (먼저 문제를 불러오세요)", visible=True)
 
         gr.Markdown("---")
 
@@ -317,29 +318,28 @@ def create_vllm_ui(app: VLLMHintApp):
         gr.Markdown("## 📊 성능 메트릭")
         metrics_output = gr.Markdown("_추론 성능이 여기에 표시됩니다_")
 
-        # 헬퍼 함수: 디버그 정보 업데이트
+        # 헬퍼 함수들
         def update_debug_info(problem_id):
             """디버그 정보 표시"""
             if problem_id is None:
                 return "⚠️ **현재 선택된 문제:** 없음 (먼저 문제를 불러오세요)"
             return f"✅ **현재 선택된 문제 ID:** `{problem_id}` (타입: `{type(problem_id).__name__}`)"
         
-        # 이벤트 핸들러
-        # 1. 문제 불러오기 버튼
-        load_result = load_btn.click(
-            fn=app.load_problem,
-            inputs=[problem_dropdown],
-            outputs=[problem_display, user_code, current_problem_id]
-        )
+        def load_and_return_all(problem_selection):
+            """문제 로드하고 모든 출력값 반환 (State 포함)"""
+            problem_md, code_template, problem_id = app.load_problem(problem_selection)
+            debug_msg = update_debug_info(problem_id)
+            return problem_md, code_template, problem_id, debug_msg
         
-        # 2. 문제 로드 후 디버그 정보 업데이트
-        load_result.then(
-            fn=update_debug_info,
-            inputs=[current_problem_id],
-            outputs=[debug_info]
+        # 이벤트 핸들러
+        # 1. 문제 불러오기 버튼 - 한 번에 모든 출력 처리
+        load_btn.click(
+            fn=load_and_return_all,
+            inputs=[problem_dropdown],
+            outputs=[problem_display, user_code, current_problem_id, debug_info]
         )
 
-        # 3. 힌트 생성 버튼
+        # 2. 힌트 생성 버튼 - State 직접 참조
         hint_btn.click(
             fn=app.generate_hint,
             inputs=[user_code, temperature_slider, current_problem_id],
