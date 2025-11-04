@@ -68,34 +68,39 @@ class VLLMHintApp:
             return "문제를 선택하세요.", "", None, "⚠️ **현재 선택된 문제:** 없음"
 
         try:
-            problem_id = int(problem_selection.split('#')[1].split(' -')[0].strip())
-            print(f"✅ [load_problem] 문제 ID 파싱 성공: {problem_id}")
+            # 문자열로 파싱 (JSON에서 problem_id가 문자열로 저장됨)
+            problem_id_str = problem_selection.split('#')[1].split(' -')[0].strip()
+            print(f"✅ [load_problem] 문제 ID 파싱 성공: {problem_id_str} (문자열)")
 
             self.current_problem = None
             for p in self.problems:
-                if p['problem_id'] == problem_id:
+                # 문자열 비교 (JSON의 problem_id가 문자열)
+                if str(p['problem_id']) == problem_id_str:
                     self.current_problem = p
                     break
 
             if not self.current_problem:
-                print(f"❌ [load_problem] 문제를 찾을 수 없음: {problem_id}")
+                print(f"❌ [load_problem] 문제를 찾을 수 없음: {problem_id_str}")
+                print(f"   JSON의 첫 번째 문제 ID: {self.problems[0]['problem_id']} (타입: {type(self.problems[0]['problem_id']).__name__})")
                 self.current_problem_id = None
                 return "❌ 문제를 찾을 수 없습니다.", "", None, "❌ 문제를 찾을 수 없습니다."
 
-            # 인스턴스 변수에 저장 (백업)
-            self.current_problem_id = problem_id
+            # 인스턴스 변수에 저장 (문자열로 저장)
+            self.current_problem_id = problem_id_str
             
             print(f"✅ [load_problem] 문제 로드 완료: {self.current_problem['title']}")
             print(f"✅ [load_problem] 인스턴스 변수 저장: self.current_problem_id = {self.current_problem_id}")
             
             problem_md = self._format_problem_display()
-            debug_msg = f"✅ **현재 선택된 문제 ID:** `{problem_id}` (타입: `{type(problem_id).__name__}`)"
+            debug_msg = f"✅ **현재 선택된 문제 ID:** `{problem_id_str}` (타입: `str`)"
             
             # 4개 값 반환: 문제, 코드 템플릿, State용 problem_id, 디버그 메시지
-            return problem_md, "# 여기에 코드를 작성하세요\n", problem_id, debug_msg
+            return problem_md, "# 여기에 코드를 작성하세요\n", problem_id_str, debug_msg
 
         except Exception as e:
             print(f"❌ [load_problem] 예외 발생: {str(e)}")
+            import traceback
+            traceback.print_exc()
             self.current_problem_id = None
             return f"❌ 오류: {str(e)}", "", None, f"❌ 오류: {str(e)}"
 
@@ -141,14 +146,14 @@ class VLLMHintApp:
             
         if problem_id is None:
             print("❌ [generate_hint] 인스턴스 변수도 None임 - 문제 선택 안됨")
-            return "❌ 먼저 문제를 선택하고 '불러오기' 버튼을 눌러주세요.", ""
+            return "❌ 먼저 문제를 선택해주세요.", ""
         
         print(f"✅ [generate_hint] 최종 사용할 problem_id: {problem_id}")
         
-        # problem_id로 문제 찾기 (정수 비교)
+        # problem_id로 문제 찾기 (문자열 비교 - JSON에서 문자열로 저장됨)
         self.current_problem = None
         for p in self.problems:
-            if p['problem_id'] == problem_id:
+            if str(p['problem_id']) == str(problem_id):
                 self.current_problem = p
                 break
         
@@ -280,13 +285,16 @@ def create_vllm_ui(app: VLLMHintApp):
 
         gr.Markdown("---")
 
-        # 문제 선택 (드롭다운 변경 시 자동 로드)
-        problem_dropdown = gr.Dropdown(
-            choices=app.get_problem_list(),
-            label="📚 문제 선택 (선택하면 자동으로 로드됩니다)",
-            interactive=True,
-            value=None  # 명시적 초기값
-        )
+        # 문제 선택
+        with gr.Row():
+            problem_dropdown = gr.Dropdown(
+                choices=app.get_problem_list(),
+                label="📚 문제 선택",
+                interactive=True,
+                value=None,
+                scale=3
+            )
+            load_btn = gr.Button("📂 불러오기", variant="primary", scale=1)
 
         problem_display = gr.Markdown("")
         
@@ -334,14 +342,21 @@ def create_vllm_ui(app: VLLMHintApp):
         metrics_output = gr.Markdown("_추론 성능이 여기에 표시됩니다_")
 
         # 이벤트 핸들러
-        # 1. 드롭다운 선택 시 자동으로 문제 로드 (불러오기 버튼 불필요)
-        problem_dropdown.change(
+        # 1. 불러오기 버튼 클릭 시 문제 로드
+        load_btn.click(
+            fn=app.load_problem,
+            inputs=[problem_dropdown],
+            outputs=[problem_display, user_code, current_problem_id, debug_info]
+        )
+        
+        # 2. 드롭다운에서 문제 선택 시에도 자동 로드 (편의 기능)
+        problem_dropdown.select(
             fn=app.load_problem,
             inputs=[problem_dropdown],
             outputs=[problem_display, user_code, current_problem_id, debug_info]
         )
 
-        # 2. 힌트 생성 버튼 - State 직접 참조
+        # 3. 힌트 생성 버튼 - State 직접 참조
         hint_btn.click(
             fn=app.generate_hint,
             inputs=[user_code, temperature_slider, current_problem_id],
