@@ -64,11 +64,11 @@ class VLLMHintApp:
             return "문제를 선택하세요.", "", None
 
         try:
-            problem_id = problem_selection.split('#')[1].split(' -')[0].strip()
+            problem_id = int(problem_selection.split('#')[1].split(' -')[0].strip())
 
             self.current_problem = None
             for p in self.problems:
-                if str(p['problem_id']) == str(problem_id):
+                if p['problem_id'] == problem_id:
                     self.current_problem = p
                     break
 
@@ -76,7 +76,7 @@ class VLLMHintApp:
                 return "❌ 문제를 찾을 수 없습니다.", "", None
 
             problem_md = self._format_problem_display()
-            # 문제 ID를 State로 반환하여 저장
+            # 문제 ID를 정수로 State에 저장
             return problem_md, "# 여기에 코드를 작성하세요\n", problem_id
 
         except Exception as e:
@@ -109,20 +109,21 @@ class VLLMHintApp:
 
         return md
 
-    def generate_hint(self, user_code: str, temperature: float, problem_id: str):
+    def generate_hint(self, user_code: str, temperature: float, problem_id):
         """힌트 생성 (vLLM 사용)"""
-        # problem_id로 문제 다시 찾기
-        if not problem_id:
+        # problem_id 검증 (None 또는 빈 값 체크)
+        if problem_id is None:
             return "❌ 먼저 문제를 선택해주세요.", ""
         
+        # problem_id로 문제 찾기 (정수 비교)
         self.current_problem = None
         for p in self.problems:
-            if str(p['problem_id']) == str(problem_id):
+            if p['problem_id'] == problem_id:
                 self.current_problem = p
                 break
         
         if not self.current_problem:
-            return "❌ 문제를 찾을 수 없습니다. 문제를 다시 선택해주세요.", ""
+            return f"❌ 문제를 찾을 수 없습니다. (ID: {problem_id})", ""
 
         if not user_code.strip():
             return "❌ 코드를 입력해주세요.", ""
