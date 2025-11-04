@@ -25,6 +25,7 @@ class VLLMHintApp:
         self.vllm_url = vllm_url
         self.current_problem = None
         self.current_model = None
+        self.current_problem_id = None  # 인스턴스 변수로 명시적 관리
 
         # vLLM 서버 연결 체크
         self.check_vllm_connection()
@@ -59,10 +60,12 @@ class VLLMHintApp:
         ]
 
     def load_problem(self, problem_selection: str):
-        """선택된 문제 로드"""
+        """선택된 문제 로드 (인스턴스 변수에도 저장)"""
         if not problem_selection:
             print("⚠️ [load_problem] 문제가 선택되지 않음")
-            return "문제를 선택하세요.", "", None
+            self.current_problem = None
+            self.current_problem_id = None
+            return "문제를 선택하세요.", "", None, "⚠️ **현재 선택된 문제:** 없음"
 
         try:
             problem_id = int(problem_selection.split('#')[1].split(' -')[0].strip())
@@ -76,17 +79,25 @@ class VLLMHintApp:
 
             if not self.current_problem:
                 print(f"❌ [load_problem] 문제를 찾을 수 없음: {problem_id}")
-                return "❌ 문제를 찾을 수 없습니다.", "", None
+                self.current_problem_id = None
+                return "❌ 문제를 찾을 수 없습니다.", "", None, "❌ 문제를 찾을 수 없습니다."
 
+            # 인스턴스 변수에 저장 (백업)
+            self.current_problem_id = problem_id
+            
             print(f"✅ [load_problem] 문제 로드 완료: {self.current_problem['title']}")
+            print(f"✅ [load_problem] 인스턴스 변수 저장: self.current_problem_id = {self.current_problem_id}")
+            
             problem_md = self._format_problem_display()
-            # 문제 ID를 정수로 State에 저장
-            print(f"✅ [load_problem] State에 저장할 problem_id: {problem_id} (타입: {type(problem_id).__name__})")
-            return problem_md, "# 여기에 코드를 작성하세요\n", problem_id
+            debug_msg = f"✅ **현재 선택된 문제 ID:** `{problem_id}` (타입: `{type(problem_id).__name__}`)"
+            
+            # 4개 값 반환: 문제, 코드 템플릿, State용 problem_id, 디버그 메시지
+            return problem_md, "# 여기에 코드를 작성하세요\n", problem_id, debug_msg
 
         except Exception as e:
             print(f"❌ [load_problem] 예외 발생: {str(e)}")
-            return f"❌ 오류: {str(e)}", "", None
+            self.current_problem_id = None
+            return f"❌ 오류: {str(e)}", "", None, f"❌ 오류: {str(e)}"
 
     def _format_problem_display(self) -> str:
         """문제 표시 포맷"""
@@ -120,12 +131,19 @@ class VLLMHintApp:
         print(f"\n🔍 [generate_hint] 호출됨")
         print(f"   - user_code 길이: {len(user_code.strip())} 글자")
         print(f"   - temperature: {temperature}")
-        print(f"   - problem_id: {problem_id} (타입: {type(problem_id).__name__})")
+        print(f"   - problem_id 매개변수: {problem_id} (타입: {type(problem_id).__name__})")
+        print(f"   - self.current_problem_id: {self.current_problem_id}")
         
-        # problem_id 검증 (None 또는 빈 값 체크)
+        # problem_id가 None이면 인스턴스 변수 사용 (폴백)
         if problem_id is None:
-            print("❌ [generate_hint] problem_id가 None임")
-            return "❌ 먼저 문제를 선택해주세요.", ""
+            print("⚠️ [generate_hint] State의 problem_id가 None, 인스턴스 변수 사용")
+            problem_id = self.current_problem_id
+            
+        if problem_id is None:
+            print("❌ [generate_hint] 인스턴스 변수도 None임 - 문제 선택 안됨")
+            return "❌ 먼저 문제를 선택하고 '불러오기' 버튼을 눌러주세요.", ""
+        
+        print(f"✅ [generate_hint] 최종 사용할 problem_id: {problem_id}")
         
         # problem_id로 문제 찾기 (정수 비교)
         self.current_problem = None
@@ -262,16 +280,13 @@ def create_vllm_ui(app: VLLMHintApp):
 
         gr.Markdown("---")
 
-        # 문제 선택
-        with gr.Row():
-            problem_dropdown = gr.Dropdown(
-                choices=app.get_problem_list(),
-                label="📚 문제 선택",
-                interactive=True,
-                scale=3,
-                value=None  # 명시적 초기값
-            )
-            load_btn = gr.Button("📂 불러오기", variant="primary", scale=1)
+        # 문제 선택 (드롭다운 변경 시 자동 로드)
+        problem_dropdown = gr.Dropdown(
+            choices=app.get_problem_list(),
+            label="📚 문제 선택 (선택하면 자동으로 로드됩니다)",
+            interactive=True,
+            value=None  # 명시적 초기값
+        )
 
         problem_display = gr.Markdown("")
         
@@ -279,7 +294,7 @@ def create_vllm_ui(app: VLLMHintApp):
         current_problem_id = gr.State(value=None)
         
         # 디버깅: 현재 선택된 문제 ID 표시
-        debug_info = gr.Markdown("⚠️ **현재 선택된 문제:** 없음 (먼저 문제를 불러오세요)", visible=True)
+        debug_info = gr.Markdown("⚠️ **현재 선택된 문제:** 없음 (문제를 선택하세요)", visible=True)
 
         gr.Markdown("---")
 
@@ -318,23 +333,10 @@ def create_vllm_ui(app: VLLMHintApp):
         gr.Markdown("## 📊 성능 메트릭")
         metrics_output = gr.Markdown("_추론 성능이 여기에 표시됩니다_")
 
-        # 헬퍼 함수들
-        def update_debug_info(problem_id):
-            """디버그 정보 표시"""
-            if problem_id is None:
-                return "⚠️ **현재 선택된 문제:** 없음 (먼저 문제를 불러오세요)"
-            return f"✅ **현재 선택된 문제 ID:** `{problem_id}` (타입: `{type(problem_id).__name__}`)"
-        
-        def load_and_return_all(problem_selection):
-            """문제 로드하고 모든 출력값 반환 (State 포함)"""
-            problem_md, code_template, problem_id = app.load_problem(problem_selection)
-            debug_msg = update_debug_info(problem_id)
-            return problem_md, code_template, problem_id, debug_msg
-        
         # 이벤트 핸들러
-        # 1. 문제 불러오기 버튼 - 한 번에 모든 출력 처리
-        load_btn.click(
-            fn=load_and_return_all,
+        # 1. 드롭다운 선택 시 자동으로 문제 로드 (불러오기 버튼 불필요)
+        problem_dropdown.change(
+            fn=app.load_problem,
             inputs=[problem_dropdown],
             outputs=[problem_display, user_code, current_problem_id, debug_info]
         )
