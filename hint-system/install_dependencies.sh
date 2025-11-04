@@ -2,38 +2,40 @@
 # RunPod 환경에서 안정적으로 의존성 설치하는 스크립트
 # 사용법: bash install_dependencies.sh
 
-set -e  # 에러 발생 시 중단
-
 echo "========================================="
 echo "Installing hint-system dependencies"
 echo "========================================="
 
 # 1) pip 업그레이드
-echo "Step 1/5: Upgrading pip..."
+echo "Step 1/6: Upgrading pip..."
 pip install --upgrade pip setuptools wheel
 
-# 2) PyTorch 먼저 설치 (CUDA 12.1)
-echo "Step 2/5: Installing PyTorch (CUDA 12.1)..."
-pip install torch==2.1.2 --index-url https://download.pytorch.org/whl/cu121
+# 2) 충돌 해결: tomlkit 먼저 업그레이드
+echo "Step 2/6: Fixing dependency conflicts..."
+pip install --upgrade tomlkit
 
-# 3) 나머지 의존성 설치 (vLLM 제외)
-echo "Step 3/5: Installing requirements.txt..."
-pip install --no-cache-dir --timeout=300 -r requirements.txt
-
-# 4) vLLM 설치 (필수)
-echo "Step 4/5: Installing vLLM (this may take 5-10 minutes)..."
+# 3) vLLM 먼저 설치 (torch 2.4.0 포함)
+echo "Step 3/6: Installing vLLM with torch 2.4.0 (5-10 minutes)..."
 pip install --no-cache-dir vllm==0.6.3
 
-# 5) pyairports 재설치 (vLLM이 설치한 0.0.1 버전 제거)
-echo "Step 5/5: Fixing pyairports (replacing 0.0.1 with 2.1.3)..."
-pip uninstall pyairports -y
-pip install pyairports==2.1.3
+# 4) pyairports 문제 해결 (airportsdata로 대체)
+echo "Step 4/6: Fixing pyairports import error..."
+pip uninstall pyairports -y 2>/dev/null || true
+pip install airportsdata
+
+# 5) 나머지 의존성 설치
+echo "Step 5/6: Installing remaining requirements..."
+pip install --no-cache-dir --timeout=300 -r requirements.txt
+
+# 6) 검증
+echo "Step 6/6: Verifying installation..."
+python -c "import torch; import vllm; import gradio; print('✅ All imports successful')"
 
 echo "========================================="
 echo "Installation complete!"
 echo "========================================="
 echo "Installed packages:"
-pip list | grep -E "torch|transformers|accelerate|vllm|gradio|pyairports"
+pip list | grep -E "torch|transformers|accelerate|vllm|gradio|airportsdata"
 
 echo ""
 echo "✅ Ready to run vLLM server!"
