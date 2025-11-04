@@ -10,8 +10,8 @@
 # 4. pip install -r requirements.txt
 # ============================================================================
 
-# UI Framework
-gradio==4.44.0
+# UI Framework (최신 버전으로 업그레이드 - tomlkit 충돌 해결)
+gradio>=4.44.0
 
 # Core dependencies (vLLM이 torch 2.4.0 설치함)
 transformers==4.45.0
@@ -30,8 +30,7 @@ protobuf==4.25.3
 # Quantization support
 bitsandbytes==0.44.1
 
-# Dependency conflict fixes
-tomlkit>=0.12.2  # runpod 요구사항
+# tomlkit - gradio가 자동으로 적절한 버전 설치
 
 # ============================================================================
 # Model Inference Backends
