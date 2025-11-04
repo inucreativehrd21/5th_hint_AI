@@ -124,6 +124,11 @@ def main():
         import subprocess
         import sys
 
+        # 환경 변수로 guided-decoding 완전 비활성화
+        import os
+        env = os.environ.copy()
+        env["VLLM_ALLOW_RUNTIME_LORA_UPDATING"] = "0"
+        
         cmd = [
             sys.executable, "-m", "vllm.entrypoints.openai.api_server",
             "--model", args.model,
@@ -134,14 +139,15 @@ def main():
             "--tensor-parallel-size", str(args.tensor_parallel_size),
             "--dtype", args.dtype,
             "--max-num-seqs", str(args.max_num_seqs),
-            "--disable-log-requests",  # 로그 간소화
+            "--disable-log-requests",
         ]
 
         if args.trust_remote_code:
             cmd.append("--trust-remote-code")
 
         logger.info(f"Running command: {' '.join(cmd)}")
-        subprocess.run(cmd)
+        logger.info("Note: Guided decoding disabled to avoid outlines dependency")
+        subprocess.run(cmd, env=env)
 
     except ImportError:
         logger.error("vLLM is not installed. Please install it with:")
