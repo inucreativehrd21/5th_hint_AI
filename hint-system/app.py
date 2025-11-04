@@ -32,8 +32,11 @@ class VLLMHintApp:
     def check_vllm_connection(self):
         """vLLM 서버 연결 확인"""
         try:
+            # 환경변수에서 모델 이름 읽기 (기본값은 서버에서 자동 감지)
+            model_name = os.getenv('VLLM_MODEL', 'Qwen/Qwen2.5-Coder-7B-Instruct')
+            
             self.current_model = VLLMInference(
-                model_name="vLLM-Server",
+                model_name=model_name,
                 base_url=self.vllm_url,
                 timeout=60
             )
