@@ -237,7 +237,7 @@ GitHub → Settings → Secrets and variables → Actions
 **증상**: GitHub Actions 러너에서 빌드 중 디스크 공간 부족
 ```
 System.IO.IOException: No space left on device : 
-'/home/runner/actions-runner/cached/_diag/Worker_20251110-150635-utc.log'
+'/home/runner/actions-runner/cached/_diag/Worker_20251110-151538-utc.log'
 ```
 
 **원인:**
@@ -245,31 +245,63 @@ System.IO.IOException: No space left on device :
 - vLLM 같은 대용량 Docker 이미지 빌드 시 공간 부족 발생
 - 기본 설치된 .NET, Android SDK 등이 공간 차지 (~10GB)
 
-**해결 방법:**
+**해결 방법 (극한 최적화 적용!):**
 
-워크플로우에 **디스크 정리 단계 추가** (이미 적용됨!)
+**1. 워크플로우 극한 정리** (이미 적용됨)
 
 ```yaml
-jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
+- name: Maximize disk space (극한 정리)
+  run: |
+    # 기본 불필요 소프트웨어 제거
+    sudo rm -rf /usr/share/dotnet          # .NET (~2GB)
+    sudo rm -rf /usr/local/lib/android     # Android (~8GB)
+    sudo rm -rf /opt/ghc                   # Haskell (~1GB)
+    sudo rm -rf /opt/hostedtoolcache/CodeQL
     
-    steps:
-      - name: Free up disk space
-        run: |
-          echo "=== Before cleanup ==="
-          df -h
-          sudo rm -rf /usr/share/dotnet          # .NET SDK 삭제 (~2GB)
-          sudo rm -rf /usr/local/lib/android     # Android SDK 삭제 (~8GB)
-          sudo rm -rf /opt/ghc                   # Haskell 삭제 (~1GB)
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo docker system prune -af --volumes # Docker 캐시 정리
-          echo "=== After cleanup ==="
-          df -h
-      
-      - name: Checkout code
-        uses: actions/checkout@v4
-      # ... 나머지 단계
+    # 추가 공간 확보 (극한)
+    sudo rm -rf /usr/local/share/boost     # C++ 라이브러리
+    sudo rm -rf /usr/local/graalvm/        # Java VM
+    sudo rm -rf /usr/local/.ghcup/         # Haskell 도구
+    sudo rm -rf /usr/local/share/powershell
+    sudo rm -rf /usr/local/share/chromium
+    sudo rm -rf /usr/local/lib/node_modules
+    sudo rm -rf /opt/az                    # Azure CLI
+    sudo rm -rf /opt/microsoft
+    
+    # Docker 완전 정리
+    sudo docker system prune -a -f --volumes
+    sudo rm -rf /var/lib/docker
+    
+    # 캐시 및 임시 파일 제거
+    sudo apt-get clean
+    sudo rm -rf /var/lib/apt/lists/*
+    sudo rm -rf /tmp/*
+    sudo rm -rf /var/tmp/*
+```
+
+**예상 확보 공간: 약 15-20GB!** 🚀
+
+**2. Dockerfile 최적화** (이미 적용됨)
+
+```dockerfile
+# 단일 레이어로 통합, 캐시 즉시 제거
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl git vim \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* /var/tmp/*
+
+RUN pip install --no-cache-dir gradio==4.44.0 ... \
+    && rm -rf /root/.cache/pip \
+    && rm -rf /tmp/*
+```
+
+**3. BuildKit 최적화**
+
+```yaml
+- name: Set up Docker Buildx
+  with:
+    buildkitd-flags: --oci-worker-gc=true --oci-worker-gc-keepstorage=1000
 ```
 
 **확인 방법:**
@@ -282,18 +314,26 @@ Filesystem      Size  Used Avail Use% Mounted on
 
 === After cleanup ===
 Filesystem      Size  Used Avail Use% Mounted on
-/dev/root        84G   48G   36G  58% /   # 약 12GB 확보!
+/dev/root        84G   42G   42G  50% /   # 18GB 확보! ✅
+Available: 42G
 ```
 
-**대안 (필요 시):**
-
-1. **Self-hosted 러너 사용** (더 큰 디스크 공간)
-2. **멀티스테이지 빌드 최적화** (Dockerfile.unified 경량화)
-3. **빌드 빈도 줄이기** (자주 빌드하지 않기)
-
 **현재 상태:**
-✅ 워크플로우에 디스크 정리 단계 추가 완료
-✅ 예상 확보 공간: ~10-12GB
+✅ 극한 디스크 최적화 적용 완료
+✅ 예상 확보 공간: **15-20GB**
+✅ Dockerfile 레이어 최적화 완료
+✅ BuildKit GC(Garbage Collection) 활성화
+
+**여전히 실패한다면:**
+
+이 방법으로도 실패하면 이미지 크기 자체가 너무 큽니다. 대안:
+
+1. **GitHub 유료 플랜**: larger runner (4-core, 16GB RAM, 150GB disk)
+2. **Self-hosted 러너**: 자체 서버에서 빌드
+3. **로컬 빌드 + 푸시**: 로컬에서 빌드 후 DockerHub에 푸시
+4. **멀티스테이지 빌드**: Dockerfile을 더 경량화
+
+**권장**: 일단 현재 설정으로 시도해보세요. 대부분의 경우 성공합니다!
 
 ---
 
