@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   vllm-server:
     # vLLM 공식 Docker 이미지 사용 (멘토님 조언)
