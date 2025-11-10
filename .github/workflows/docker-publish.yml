@@ -35,9 +35,8 @@ jobs:
           sudo rm -rf /opt/az
           sudo rm -rf /opt/microsoft
           
-          # Docker 이미지 및 컨테이너 완전 제거
-          sudo docker system prune -a -f --volumes
-          sudo rm -rf /var/lib/docker
+          # Docker 정리 (디렉토리는 유지)
+          sudo docker system prune -a -f --volumes || true
           
           # APT 캐시 정리
           sudo apt-get clean
@@ -46,6 +45,10 @@ jobs:
           # 임시 파일 정리
           sudo rm -rf /tmp/*
           sudo rm -rf /var/tmp/*
+          
+          # Docker 서비스 재시작 (중요!)
+          sudo systemctl restart docker
+          sleep 5
           
           echo "=== After cleanup ==="
           df -h
