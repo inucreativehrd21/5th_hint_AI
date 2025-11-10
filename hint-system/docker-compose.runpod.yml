@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # vLLM 공식 이미지 - 서버 자동 실행
+  vllm-server:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-hint-server
+    ports:
+      - "8000:8000"
+    environment:
+      # 모델 설정
+      - HF_TOKEN=${HF_TOKEN:-}
+    command: >
+      --model Qwen/Qwen2.5-Coder-7B-Instruct
+      --host 0.0.0.0
+      --port 8000
+      --dtype auto
+      --max-model-len 4096
+      --gpu-memory-utilization 0.85
+      --trust-remote-code
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - ${HF_HOME:-~/.cache/huggingface}:/root/.cache/huggingface
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+  # Gradio UI - vLLM 서버와 통신
+  gradio-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.gradio
+    container_name: hint-gradio-ui
+    ports:
+      - "7860:7860"
+    environment:
+      - VLLM_API_BASE=http://vllm-server:8000/v1
+      - VLLM_MODEL_NAME=Qwen/Qwen2.5-Coder-7B-Instruct
+    depends_on:
+      vllm-server:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
