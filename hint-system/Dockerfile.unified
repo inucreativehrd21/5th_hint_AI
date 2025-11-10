@@ -17,10 +17,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Python 패키지 의존성 파일 복사
 COPY requirements.txt /app/requirements.txt
 
+# transformers 최신 버전으로 업그레이드 (vLLM 호환성)
+RUN pip install --no-cache-dir --upgrade \
+    transformers>=4.46.0 \
+    && rm -rf /root/.cache/pip
+
 # Gradio 및 앱 의존성 설치 (pip 캐시 제거)
 RUN pip install --no-cache-dir \
     gradio==4.44.0 \
-    transformers>=4.45.0 \
     accelerate>=0.27.0 \
     sentencepiece \
     protobuf \
