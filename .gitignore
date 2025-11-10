@@ -2,13 +2,15 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 
 # Virtual environments
 venv/
 .env/
 .env
-.env.*
 .venv/
+env/
+ENV/
 
 # Distribution / packaging
 build/
@@ -24,10 +26,15 @@ logs/
 # OS files
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+*~
 
 # IDEs
 .vscode/
 .idea/
+*.sublime-project
+*.sublime-workspace
 
 # Certificates and keys
 *.pem
@@ -41,13 +48,36 @@ Thumbs.db
 
 # Misc
 *.sqlite3
+.pytest_cache/
+.coverage
+htmlcov/
 
+# Project specific
 # Ignore local secrets and system-specific files
 secrets.json
 credentials.json
 
-# If you have any model cache directories, exclude them
+# Model cache directories
 .cache/
+models/cache/
+~/.cache/huggingface/
+
+# Docker volumes
+volumes/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Data files (uncomment if you don't want to track data)
+# hint-system/data/*.json
+# crawler/data/raw/*.json
 
 # Keep examples in repo but not real env files
 !.env.example
