@@ -80,8 +80,7 @@ temp/
 # crawler/data/raw/*.json
 
 # Keep examples in repo but not real env files
-!.env.example
-hint-system/.env.example
+
 .env 
 logs/ 
 __pycache__\\ 
