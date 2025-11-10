@@ -1,306 +1,303 @@
-# AI 코딩 힌트 시스템 (Hint System)
+# 🚀 vLLM + Gradio 통합 힌트 시스템
 
-Qwen2.5-Coder-7B 기반의 AI 코딩 힌트 생성 시스템입니다. vLLM을 사용하여 빠른 추론 속도를 제공하며, Gradio 웹 인터페이스를 통해 사용자 친화적인 UI를 제공합니다.
+**단일 Docker 이미지**로 vLLM 서버와 Gradio UI를 함께 실행하는 AI 기반 코딩 힌트 생성 시스템
 
-## 🚀 빠른 시작 (RunPod 환경)
+---
 
-### 1단계: 저장소 클론 및 이동
+## ✨ 주요 특징
+
+- 🐳 **단일 Docker 이미지**: vLLM + Gradio가 하나의 컨테이너에서 동작
+- ⚡ **초고속 추론**: vLLM 엔진으로 15-24배 빠른 응답  
+- 🎯 **RunPod 최적화**: 템플릿 선택만으로 "딸깍" 배포
+- 🎓 **교육학적 설계**: 난이도별 맞춤형 힌트 제공
+- 🛡️ **보안 가드**: 정답 코드 노출 방지
+
+---
+
+## 🚀 빠른 시작 (3가지 방법)
+
+### 방법 1: Docker Hub 이미지 사용 (RunPod 추천) ⭐
+
+**가장 간단한 방법!** 이미 빌드된 이미지를 사용합니다.
+
+1. **RunPod Pod 생성**
+   - Deploy → **Custom Image**
+   - Container Image: `your-dockerhub-username/hint-ai-vllm:latest`
+   - GPU: RTX 4090/5090
+   - Expose Ports: `8000, 7860`
+   - Deploy 클릭!
+
+2. **5-10분 대기** (모델 다운로드)
+
+3. **접속**
+   - Gradio UI: `https://xxxxx-7860.proxy.runpod.net`
+   - vLLM API: `https://xxxxx-8000.proxy.runpod.net`
+
+📖 **상세 가이드**: [`RUNPOD_UNIFIED_DEPLOY.md`](RUNPOD_UNIFIED_DEPLOY.md)
+
+---
+
+### 방법 2: Docker Compose 사용 (로컬/서버)
+
+vLLM과 Gradio를 별도 컨테이너로 실행합니다.
 
 ```bash
 cd /workspace
-git clone https://github.com/inucreativehrd21/5th_project_mvp.git
-cd 5th_project_mvp/hint-system
+git clone https://github.com/inucreativehrd21/5th_hint_AI.git
+cd 5th_hint_AI/hint-system
+bash runpod_docker_simple.sh
 ```
 
-### 2단계: 스크립트 권한 설정
-
-```bash
-bash setup_permissions.sh
-```
-
-### 3단계: 의존성 설치 (첫 실행 시)
-
-```bash
-bash install_dependencies.sh
-```
-
-소요 시간: 약 10-15분
-
-### 4단계: 서버 시작
-
-```bash
-bash runpod_start.sh
-```
-
-서버가 시작되면 다음 주소로 접속 가능합니다:
-- **Gradio UI**: http://localhost:7860
-- **vLLM API**: http://localhost:8000/v1
+📖 **상세 가이드**: [`RUNPOD_DOCKER_GUIDE.md`](RUNPOD_DOCKER_GUIDE.md)
 
 ---
 
-## 📋 주요 기능
+### 방법 3: 커스텀 이미지 빌드
 
-### 1. AI 코드 힌트 생성
-- **모델**: Qwen2.5-Coder-7B-Instruct
-- **방식**: RAG 기반 4단계 파이프라인
-  1. 문제 메타데이터 조회 (MySQL)
-  2. 벡터 유사도 검색 (ChromaDB)
-  3. 프롬프트 생성
-  4. LLM 추론 (vLLM)
-
-### 2. 빠른 추론 속도
-- **vLLM 엔진**: HuggingFace Transformers 대비 15-24배 빠름
-- **평균 응답 시간**: 0.5-1초 (Warm Start)
-- **GPU 최적화**: PagedAttention, Continuous Batching
-
-### 3. 사용자 친화적 UI
-- **Gradio 인터페이스**: 브라우저에서 바로 사용
-- **실시간 힌트 생성**: 코드 입력 즉시 힌트 제공
-- **Monaco Editor 통합**: VSCode 스타일 코드 편집기
-
----
-
-## 🛠️ 스크립트 명령어
-
-### 기본 명령어
-
-| 스크립트 | 설명 | 사용 예시 |
-|----------|------|-----------|
-| `runpod_start.sh` | 서버 시작 (vLLM + Gradio) | `bash runpod_start.sh` |
-| `runpod_stop.sh` | 서버 중지 | `bash runpod_stop.sh` |
-| `runpod_restart.sh` | 서버 재시작 | `bash runpod_restart.sh` |
-| `runpod_status.sh` | 시스템 상태 확인 | `bash runpod_status.sh` |
-
-### 고급 명령어
+자신만의 Docker 이미지를 빌드하고 싶다면:
 
 ```bash
-# 실시간 로그 모니터링
-tail -f logs/vllm_server.log     # vLLM 로그
-tail -f logs/gradio_app.log      # Gradio 로그
+# 1. 이미지 빌드 및 푸시
+bash build_and_push.sh
 
-# GPU 실시간 모니터링
-nvidia-smi -l 1
+# 2. Docker Hub 사용자명 입력
+> your-dockerhub-username
 
-# 시스템 상태 실시간 갱신 (2초마다)
-watch -n 2 bash runpod_status.sh
+# 3. RunPod에서 사용
+# Container Image: your-dockerhub-username/hint-ai-vllm:latest
 ```
 
 ---
 
-## ⚙️ 설정 (.env 파일)
+## 📂 프로젝트 구조
 
-### 기본 설정
+```
+hint-system/
+├── app.py                        # Gradio UI 메인 앱
+├── config.py                     # 설정 파일
+├── models/                       # AI 모델 모듈
+│   ├── model_inference.py        # vLLM 추론
+│   ├── code_analyzer.py          # 코드 분석
+│   ├── adaptive_prompt.py        # 프롬프트 생성
+│   ├── hint_validator.py         # 힌트 검증
+│   └── security_guard.py         # 보안 가드
+├── data/                         # 문제 데이터
+│   └── problems_multi_solution.json
+│
+├── Dockerfile.unified            # 통합 Docker 이미지
+├── Dockerfile.gradio             # Gradio만 (Compose용)
+├── docker-compose.runpod.yml     # Docker Compose 설정
+│
+├── build_and_push.sh             # 이미지 빌드 스크립트
+├── runpod_docker_simple.sh       # Docker Compose 실행
+│
+├── RUNPOD_UNIFIED_DEPLOY.md      # 통합 이미지 배포 가이드
+├── RUNPOD_DOCKER_GUIDE.md        # Docker Compose 가이드
+└── README.md                     # 이 파일
+```
+
+---
+
+## 🛠️ 기술 스택
+
+### AI/ML
+- **vLLM 0.6.3**: 초고속 LLM 추론 엔진
+- **Qwen2.5-Coder-7B**: 코딩 특화 언어 모델
+- **Transformers 4.45+**: HuggingFace 모델 로딩
+
+### Backend
+- **FastAPI**: vLLM OpenAI 호환 API
+- **Gradio 4.44**: 웹 UI 프레임워크
+
+### DevOps
+- **Docker**: 컨테이너화
+- **Docker Compose**: 멀티 컨테이너 관리
+- **RunPod**: GPU 클라우드 플랫폼
+
+---
+
+## 🎓 힌트 시스템 특징
+
+### 3단계 난이도 시스템
+
+1. **🔰 초급 (Novice)**
+   - 구체적인 힌트와 함수명 제공
+   - 코드 예시 포함
+   - 처음 시작하거나 막막할 때
+
+2. **📚 중급 (Intermediate)**
+   - 추상적 힌트와 개념 설명
+   - 방향성 제시
+   - 어느 정도 진행했지만 막힌 부분이 있을 때
+
+3. **🎓 고급 (Advanced)**
+   - 소크라테스식 질문
+   - 사고 유도
+   - 거의 완성했거나 스스로 해결하고 싶을 때
+
+### 4가지 지표 진단
+
+- **코드 유사도**: AST 기반 구조 분석
+- **문법 오류**: Python 구문 검증
+- **논리 오류**: 알고리즘 로직 분석
+- **개념 이해도**: 필요한 개념 체크
+
+### Chain-of-Hints
+
+- 이전 힌트 히스토리 저장
+- 동일 난이도 3회 요청 시 자동 상승
+- 학습 진행도 추적
+
+---
+
+## 🧪 사용 예시
+
+### 1. Gradio UI에서 사용
+
+1. 문제 선택 (예: #1000 - A+B)
+2. 코드 작성
+3. 난이도 선택 (초급/중급/고급)
+4. "힌트 받기" 클릭
+5. AI가 코드 분석 후 맞춤형 힌트 제공
+
+### 2. vLLM API 직접 호출
+
+```bash
+curl -X POST http://localhost:8000/v1/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+    "prompt": "Python으로 두 수의 합을 구하는 힌트를 주세요.",
+    "max_tokens": 200,
+    "temperature": 0.7
+  }'
+```
+
+---
+
+## 📊 성능
+
+### 추론 속도
+- **vLLM**: 평균 0.5-1.5초
+- **기존 Transformers**: 평균 8-15초
+- **속도 향상**: **15-24배**
+
+### 리소스 요구사항
+- **GPU 메모리**: 8-10GB (RTX 4090/5090)
+- **CPU 메모리**: 8GB+
+- **디스크**: 30GB+ (모델 + 데이터)
+
+---
+
+## 🔧 환경 설정
+
+### 환경 변수 (.env)
 
 ```bash
 # vLLM 서버 설정
-VLLM_MODEL=Qwen/Qwen2.5-Coder-7B-Instruct
-VLLM_PORT=8000
-VLLM_GPU_MEMORY_UTILIZATION=0.85
-VLLM_MAX_MODEL_LEN=4096
+VLLM_API_BASE=http://127.0.0.1:8000/v1
+VLLM_MODEL_NAME=Qwen/Qwen2.5-Coder-7B-Instruct
 
-# Gradio 앱 설정
-GRADIO_PORT=7860
-VLLM_SERVER_URL=http://localhost:8000/v1
+# HuggingFace 토큰 (선택)
+HF_TOKEN=your_token_here
 
-# 데이터 경로
-DATA_FILE_PATH=data/problems_multi_solution.json
-```
+# 캐시 디렉토리
+HF_HOME=/root/.cache/huggingface
 
-### 성능 튜닝
-
-#### GPU 메모리 조정 (RTX 4090 24GB 기준)
-
-```bash
-# 안정적 (권장)
-VLLM_GPU_MEMORY_UTILIZATION=0.85
-
-# 공격적 (OOM 위험)
-VLLM_GPU_MEMORY_UTILIZATION=0.90
-
-# 보수적 (여유 있음)
-VLLM_GPU_MEMORY_UTILIZATION=0.75
-```
-
----
-
-## 📊 시스템 아키텍처
-
-```
-┌──────────────────────────────────────────────────────┐
-│                  Gradio Web UI                       │
-│              (Port 7860, Browser)                    │
-│  - 문제 선택                                           │
-│  - 코드 입력 (Monaco Editor)                          │
-│  - 힌트 요청 및 표시                                   │
-└────────────────────┬─────────────────────────────────┘
-                     │
-                     ▼ HTTP API Call
-┌──────────────────────────────────────────────────────┐
-│              vLLM Inference Server                   │
-│            (Port 8000, OpenAI API)                   │
-│  - Model: Qwen2.5-Coder-7B-Instruct                 │
-│  - GPU: RTX 4090 24GB                                │
-│  - Engine: PagedAttention + Continuous Batching     │
-└────────────────────┬─────────────────────────────────┘
-                     │
-                     ▼ Model Loading
-┌──────────────────────────────────────────────────────┐
-│          HuggingFace Model Cache                     │
-│      ~/.cache/huggingface/hub/                       │
-│  - Tokenizer                                         │
-│  - Model Weights (8-bit Quantized)                  │
-│  - Config Files                                      │
-└──────────────────────────────────────────────────────┘
+# Gradio 설정
+GRADIO_SERVER_NAME=0.0.0.0
+GRADIO_SERVER_PORT=7860
 ```
 
 ---
 
 ## 🐛 문제 해결
 
-### 1. 서버가 시작되지 않음
+### vLLM 서버가 시작되지 않음
 
 ```bash
 # 로그 확인
-tail -f logs/vllm_server.log
+docker logs <container_id>
 
-# GPU 메모리 확인
-nvidia-smi
-
-# 포트 충돌 확인
-lsof -i :8000
-lsof -i :7860
-
-# 재시작
-bash runpod_restart.sh
-```
-
-### 2. GPU 메모리 부족
-
-```bash
-# .env 파일 수정
+# GPU 메모리 사용률 조정
 VLLM_GPU_MEMORY_UTILIZATION=0.75
-VLLM_MAX_MODEL_LEN=2048
 
-# 서버 재시작
-bash runpod_restart.sh
+# 또는 더 작은 모델 사용
+VLLM_MODEL_NAME=Qwen/Qwen2.5-Coder-1.5B-Instruct
 ```
 
-### 3. 모델 다운로드 실패
+### Gradio UI 접속 안 됨
 
 ```bash
-# 인터넷 연결 확인
-ping huggingface.co
+# 포트 확인
+netstat -tlnp | grep 7860
 
-# 캐시 확인
-ls -lh ~/.cache/huggingface/hub/
+# 방화벽 확인
+sudo ufw allow 7860
 
-# 수동 다운로드
-python3 -c "from transformers import AutoTokenizer; AutoTokenizer.from_pretrained('Qwen/Qwen2.5-Coder-7B-Instruct')"
+# RunPod: TCP Port Mappings 확인
+```
+
+### 모델 다운로드 느림
+
+```bash
+# HuggingFace 토큰 설정
+export HF_TOKEN=your_token_here
+
+# 또는 미리 다운로드된 모델 사용
+# Volume 마운트: -v /path/to/models:/root/.cache/huggingface
 ```
 
 ---
 
-## 📈 성능 벤치마크
+## 📚 추가 문서
 
-### RTX 4090 24GB 기준
-
-| 메트릭 | 값 |
-|--------|-----|
-| 모델 로딩 시간 | 30-60초 |
-| 첫 추론 (Cold Start) | 2-3초 |
-| 평균 추론 (Warm) | 0.5-1초 |
-| 최대 처리량 | ~50 req/min |
-| GPU 메모리 사용 | ~18GB |
-| GPU 사용률 | 60-90% |
-
----
-
-## 📚 디렉토리 구조
-
-```
-hint-system/
-├── runpod_start.sh              # 🟢 서버 시작
-├── runpod_stop.sh               # 🔴 서버 중지
-├── runpod_restart.sh            # 🔄 서버 재시작
-├── runpod_status.sh             # 📊 상태 확인
-├── setup_permissions.sh         # 🔧 권한 설정
-├── install_dependencies.sh      # 📦 의존성 설치
-├── app.py                       # Gradio 앱
-├── vllm_server.py               # vLLM 서버 (참고용)
-├── requirements.txt             # Python 패키지
-├── .env                         # 환경 변수
-├── .env.example                 # 환경 변수 예시
-├── RUNPOD_GUIDE.md              # 🚀 상세 가이드
-├── data/
-│   └── problems_multi_solution.json  # 문제 데이터
-├── logs/
-│   ├── vllm_server.log          # vLLM 로그
-│   ├── gradio_app.log           # Gradio 로그
-│   ├── vllm.pid                 # vLLM PID
-│   └── gradio.pid               # Gradio PID
-└── models/
-    ├── __init__.py
-    ├── model_config.py
-    └── model_inference.py       # vLLM 클라이언트
-```
-
----
-
-## 🔗 관련 문서
-
-- **[RUNPOD_GUIDE.md](./RUNPOD_GUIDE.md)** - RunPod 배포 상세 가이드
-- **[DEPLOYMENT_SUMMARY.md](../DEPLOYMENT_SUMMARY.md)** - 전체 배포 요약
-- **[RECOMMENDATION_ALTERNATIVES.md](../docs/RECOMMENDATION_ALTERNATIVES.md)** - 추천 시스템 아키텍처
-
----
-
-## 💡 주요 개선사항 (v2.0)
-
-### 2025-11-10 업데이트
-
-1. **RunPod 환경 최적화**
-   - 전용 시작/중지/재시작 스크립트 추가
-   - 실시간 상태 모니터링 기능
-   - GPU 메모리 자동 관리
-
-2. **사용자 경험 개선**
-   - 컬러풀한 터미널 출력
-   - 진행 상황 시각화
-   - 상세한 에러 메시지
-
-3. **안정성 향상**
-   - 자동 포트 충돌 해결
-   - 프로세스 정리 자동화
-   - 헬스체크 통합
-
-4. **문서화 강화**
-   - 단계별 가이드 추가
-   - 문제 해결 섹션 확장
-   - 성능 튜닝 가이드
+- **[RUNPOD_UNIFIED_DEPLOY.md](RUNPOD_UNIFIED_DEPLOY.md)**: 통합 이미지 배포 완벽 가이드
+- **[RUNPOD_DOCKER_GUIDE.md](RUNPOD_DOCKER_GUIDE.md)**: Docker Compose 사용 가이드
+- **[상위 README](../README.md)**: 프로젝트 전체 개요
 
 ---
 
 ## 🤝 기여
 
-문제 발견 또는 개선 제안:
-- **GitHub Issues**: https://github.com/inucreativehrd21/5th_project_mvp/issues
-- **Pull Requests**: 환영합니다!
+이 프로젝트는 교육 목적으로 개발되었습니다.
+
+### 개발 팀
+- 크롤링: 백준 문제 데이터 수집
+- AI 모델: Qwen2.5-Coder 활용
+- 시스템: vLLM + Docker 아키텍처
 
 ---
 
 ## 📄 라이선스
 
-이 프로젝트는 교육 목적으로 제작되었습니다.
+MIT License
 
 ---
 
-## 👥 팀
+## 🙏 감사의 말
 
-- **AI 모델**: Qwen2.5-Coder-7B-Instruct (Alibaba Cloud)
-- **인프라**: RunPod GPU Cloud
-- **개발**: 5th Project MVP Team
+- **vLLM 팀**: 초고속 추론 엔진
+- **Qwen 팀**: 우수한 코딩 모델
+- **백준**: 알고리즘 문제 플랫폼
+- **멘토님**: Docker 아키텍처 조언
 
 ---
 
-**마지막 업데이트**: 2025-11-10  
-**버전**: 2.0 (RunPod Optimized)
+## 📞 문의
+
+- GitHub Issues: [5th_hint_AI/issues](https://github.com/inucreativehrd21/5th_hint_AI/issues)
+
+---
+
+**🚀 지금 바로 시작하세요!**
+
+```bash
+# Docker Hub 이미지 사용 (RunPod)
+Container Image: your-dockerhub-username/hint-ai-vllm:latest
+
+# 또는 Git 클론 후 실행
+git clone https://github.com/inucreativehrd21/5th_hint_AI.git
+cd 5th_hint_AI/hint-system
+bash runpod_docker_simple.sh
+```
