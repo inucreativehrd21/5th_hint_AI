@@ -13,17 +13,44 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Free up disk space
+      - name: Maximize disk space (극한 정리)
         run: |
           echo "=== Before cleanup ==="
           df -h
+          
+          # 모든 불필요한 소프트웨어 제거
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
           sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo docker system prune -af --volumes
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          
+          # 추가 공간 확보 (극한)
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/local/graalvm/
+          sudo rm -rf /usr/local/.ghcup/
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/lib/node_modules
+          sudo rm -rf /opt/az
+          sudo rm -rf /opt/microsoft
+          
+          # Docker 이미지 및 컨테이너 완전 제거
+          sudo docker system prune -a -f --volumes
+          sudo rm -rf /var/lib/docker
+          
+          # APT 캐시 정리
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          
+          # 임시 파일 정리
+          sudo rm -rf /tmp/*
+          sudo rm -rf /var/tmp/*
+          
           echo "=== After cleanup ==="
           df -h
+          echo "=== Available space in GB ==="
+          df -h | grep /dev/root | awk '{print "Available: " $4}'
       
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,7 +60,7 @@ jobs:
         with:
           driver-opts: |
             image=moby/buildkit:latest
-            network=host
+          buildkitd-flags: --oci-worker-gc=true --oci-worker-gc-keepstorage=1000
       
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -41,7 +68,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
-      - name: Build and Push Docker image
+      - name: Build and Push Docker image (레이어 최적화)
         uses: docker/build-push-action@v5
         with:
           context: ./hint-system
@@ -50,9 +77,16 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/hint-ai-vllm:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/hint-ai-vllm:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/hint-ai-vllm:latest
-          cache-to: type=inline
-          no-cache: false
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/hint-ai-vllm:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/hint-ai-vllm:buildcache,mode=max
+          outputs: type=registry,compression=zstd,compression-level=3,force-compression=true
+      
+      - name: Cleanup after build
+        if: always()
+        run: |
+          docker system prune -a -f --volumes
+          echo "=== Final disk usage ==="
+          df -h
       
       - name: Image digest
         run: echo "Image pushed successfully to DockerHub!"
