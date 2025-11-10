@@ -21,30 +21,46 @@
 4. **공개 설정**: **Public** (권장)
 5. "Create" 클릭
 
-### 2단계: DockerHub Access Token 생성
+### 2단계: DockerHub Access Token 생성 ⚠️ 중요!
 
-1. DockerHub → **Account Settings** → **Security**
+1. DockerHub → **Account Settings** → **Security** (또는 **Personal Access Tokens**)
 2. "**New Access Token**" 클릭
 3. **Access Token Description**: `GitHub Actions`
 4. **Access permissions**: **Read, Write, Delete** 선택
 5. "**Generate**" 클릭
-6. **토큰 복사** (한 번만 표시됨!) → 안전한 곳에 저장
+6. **⚠️ 토큰 복사** (한 번만 표시됨!) → 메모장에 임시 저장
 
-### 3단계: GitHub Repository Secrets 설정
+**중요 확인사항:**
+- ✅ 토큰은 `dckr_pat_` 로 시작해야 함
+- ✅ 복사할 때 앞뒤 공백 없이 정확히 복사
+- ✅ **비밀번호가 아니라 토큰**을 복사해야 함!
+
+### 3단계: GitHub Repository Secrets 설정 ⚠️ 정확히 입력!
 
 1. GitHub 레포지토리 페이지 이동
+   ```
+   https://github.com/inucreativehrd21/5th_hint_AI
+   ```
+
 2. **Settings** → **Secrets and variables** → **Actions**
+
 3. "**New repository secret**" 클릭
 
 **첫 번째 Secret 추가:**
 - Name: `DOCKERHUB_USERNAME`
-- Secret: `your-dockerhub-username` (DockerHub 사용자명)
+- Secret: `inucreativehrd21` (**정확히 입력!**)
 - "Add secret" 클릭
 
 **두 번째 Secret 추가:**
 - Name: `DOCKERHUB_TOKEN`
-- Secret: `위에서 복사한 Access Token`
+- Secret: `dckr_pat_xxxxxxxxxxxxx` (**2단계에서 복사한 토큰 붙여넣기**)
 - "Add secret" 클릭
+
+**⚠️ 흔한 실수:**
+- ❌ DOCKERHUB_TOKEN에 **비밀번호** 입력 (틀림!)
+- ❌ 토큰 복사 시 공백 포함
+- ❌ 사용자명 대소문자 틀림
+- ✅ 반드시 **Access Token**을 사용해야 함!
 
 ---
 
@@ -158,6 +174,128 @@ https://hub.docker.com/r/your-dockerhub-username/hint-ai-vllm
 ---
 
 ## 🐛 트러블슈팅
+
+### ⚠️ 문제 0: "unauthorized: incorrect username or password" (가장 흔한 문제!)
+
+**증상**: GitHub Actions에서 DockerHub 로그인 실패
+```
+Error response from daemon: Get "https://registry-1.docker.io/v2/": 
+unauthorized: incorrect username or password
+```
+
+**원인:**
+1. ❌ DOCKERHUB_TOKEN에 **비밀번호**를 입력함 (가장 흔함!)
+2. ❌ Access Token이 아닌 다른 값 입력
+3. ❌ 토큰 복사 시 공백 포함
+4. ❌ DOCKERHUB_USERNAME 오타
+
+**해결 방법:**
+
+**Step 1: DockerHub에서 새 토큰 생성**
+```bash
+1. https://hub.docker.com 로그인
+2. Account Settings → Security (또는 Personal Access Tokens)
+3. "New Access Token" 클릭
+4. Description: GitHub Actions
+5. Permissions: Read, Write, Delete
+6. Generate 클릭
+7. 토큰 복사 (dckr_pat_로 시작하는 긴 문자열)
+```
+
+**Step 2: GitHub Secrets 재설정**
+```bash
+1. https://github.com/inucreativehrd21/5th_hint_AI
+2. Settings → Secrets and variables → Actions
+3. 기존 DOCKERHUB_TOKEN 삭제 (있다면)
+4. New repository secret 클릭
+
+   Name: DOCKERHUB_TOKEN
+   Secret: [방금 복사한 토큰 붙여넣기]
+   
+5. 기존 DOCKERHUB_USERNAME 확인/수정
+   Name: DOCKERHUB_USERNAME
+   Secret: inucreativehrd21
+```
+
+**Step 3: 재실행**
+```bash
+# GitHub → Actions → 실패한 워크플로우 → Re-run all jobs
+```
+
+**확인 방법:**
+```bash
+# Secrets이 올바르게 설정되었는지 확인
+GitHub → Settings → Secrets and variables → Actions
+- DOCKERHUB_USERNAME 존재 확인
+- DOCKERHUB_TOKEN 존재 확인 (값은 보이지 않음)
+```
+
+---
+
+### ⚠️ 문제 0-2: "No space left on device" (GitHub Actions 디스크 부족)
+
+**증상**: GitHub Actions 러너에서 빌드 중 디스크 공간 부족
+```
+System.IO.IOException: No space left on device : 
+'/home/runner/actions-runner/cached/_diag/Worker_20251110-150635-utc.log'
+```
+
+**원인:**
+- GitHub Actions 무료 러너는 약 14GB 디스크 제공
+- vLLM 같은 대용량 Docker 이미지 빌드 시 공간 부족 발생
+- 기본 설치된 .NET, Android SDK 등이 공간 차지 (~10GB)
+
+**해결 방법:**
+
+워크플로우에 **디스크 정리 단계 추가** (이미 적용됨!)
+
+```yaml
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Free up disk space
+        run: |
+          echo "=== Before cleanup ==="
+          df -h
+          sudo rm -rf /usr/share/dotnet          # .NET SDK 삭제 (~2GB)
+          sudo rm -rf /usr/local/lib/android     # Android SDK 삭제 (~8GB)
+          sudo rm -rf /opt/ghc                   # Haskell 삭제 (~1GB)
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker system prune -af --volumes # Docker 캐시 정리
+          echo "=== After cleanup ==="
+          df -h
+      
+      - name: Checkout code
+        uses: actions/checkout@v4
+      # ... 나머지 단계
+```
+
+**확인 방법:**
+
+빌드 로그에서 디스크 공간 확인:
+```bash
+=== Before cleanup ===
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/root        84G   60G   24G  72% /
+
+=== After cleanup ===
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/root        84G   48G   36G  58% /   # 약 12GB 확보!
+```
+
+**대안 (필요 시):**
+
+1. **Self-hosted 러너 사용** (더 큰 디스크 공간)
+2. **멀티스테이지 빌드 최적화** (Dockerfile.unified 경량화)
+3. **빌드 빈도 줄이기** (자주 빌드하지 않기)
+
+**현재 상태:**
+✅ 워크플로우에 디스크 정리 단계 추가 완료
+✅ 예상 확보 공간: ~10-12GB
+
+---
 
 ### 문제 1: GitHub Actions 빌드 실패
 
