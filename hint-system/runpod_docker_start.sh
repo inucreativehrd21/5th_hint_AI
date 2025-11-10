@@ -50,11 +50,18 @@ fi
 echo -e "${GREEN}✅ Docker Compose: $(docker compose version)${NC}"
 
 # NVIDIA Docker Runtime 확인
-if ! docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi &> /dev/null; then
-    echo -e "${RED}❌ NVIDIA Docker Runtime이 설정되지 않았습니다.${NC}"
+echo -e "${YELLOW}   NVIDIA Docker Runtime 확인 중...${NC}"
+if docker info 2>/dev/null | grep -i "runtimes.*nvidia" > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ NVIDIA Docker Runtime: nvidia runtime 감지됨${NC}"
+elif [ -f /etc/docker/daemon.json ] && grep -q "nvidia" /etc/docker/daemon.json 2>/dev/null; then
+    echo -e "${GREEN}✅ NVIDIA Docker Runtime: daemon.json 설정 확인됨${NC}"
+elif command -v nvidia-smi &> /dev/null; then
+    echo -e "${YELLOW}⚠️  NVIDIA Runtime 설정을 확인할 수 없지만 GPU가 있어 계속 진행합니다.${NC}"
+    echo -e "${YELLOW}   문제 발생 시: sudo bash setup_nvidia_docker_runpod.sh 실행${NC}"
+else
+    echo -e "${RED}❌ NVIDIA GPU를 찾을 수 없습니다.${NC}"
     exit 1
 fi
-echo -e "${GREEN}✅ NVIDIA Docker Runtime 설정됨${NC}"
 
 # GPU 정보
 echo -e "${GREEN}✅ GPU 정보:${NC}"
