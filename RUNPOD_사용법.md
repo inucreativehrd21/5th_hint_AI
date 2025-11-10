@@ -175,6 +175,21 @@ print(response.choices[0].message.content)
 
 ## 🛠️ 문제 해결
 
+### ImportError: cannot import name 'AutoVideoProcessor'
+
+**증상**: Pod 로그에서 다음 오류 발생
+```
+ImportError: cannot import name 'AutoVideoProcessor' from 'transformers'
+```
+
+**원인**: vLLM과 transformers 버전 호환 문제
+
+**해결**: 이미 수정됨! (transformers 4.46.0으로 업그레이드)
+- 최신 이미지를 다시 Pull 하세요
+- Pod Stop → Start 또는 Terminate → 새로 Deploy
+
+---
+
 ### Pod가 시작되지 않을 때
 
 **증상**: Pod 상태가 계속 "Starting..."
