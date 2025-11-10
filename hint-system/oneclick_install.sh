@@ -144,19 +144,43 @@ if command -v nvidia-smi &> /dev/null; then
     else
         echo -e "${YELLOW}   NVIDIA Container Toolkit 설치 중...${NC}"
         
+        # 기존 저장소 파일 제거 (오류 방지)
+        rm -f /etc/apt/sources.list.d/nvidia-container-toolkit.list
+        
+        # GPG 키 디렉토리 생성
+        mkdir -p /usr/share/keyrings
+        
+        # GPG 키 다운로드 및 저장
+        echo -e "${YELLOW}   GPG 키 다운로드 중...${NC}"
+        curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey 2>/dev/null | \
+            gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg 2>/dev/null
+        
+        if [ ! -f /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg ]; then
+            echo -e "${YELLOW}   GPG 키 다운로드 실패, 대안 방법 시도 중...${NC}"
+            wget -q -O - https://nvidia.github.io/libnvidia-container/gpgkey | \
+                gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg 2>/dev/null || true
+        fi
+        
         # 저장소 추가
-        distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-        curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
-            gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg 2>/dev/null || true
+        distribution=$(. /etc/os-release; echo "$ID$VERSION_ID")
+        echo -e "${YELLOW}   저장소 추가 중 (distribution: $distribution)...${NC}"
         
-        curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | \
-            sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-            tee /etc/apt/sources.list.d/nvidia-container-toolkit.list > /dev/null
+        # 저장소 URL 생성 및 저장
+        cat > /etc/apt/sources.list.d/nvidia-container-toolkit.list <<EOF
+deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://nvidia.github.io/libnvidia-container/$distribution/\$(ARCH) /
+EOF
         
-        apt-get update -y
-        apt-get install -y nvidia-container-toolkit
+        # apt 업데이트 (오류 무시)
+        echo -e "${YELLOW}   패키지 목록 업데이트 중...${NC}"
+        apt-get update -y 2>&1 | grep -v "nvidia-container-toolkit" || true
         
-        echo -e "${GREEN}✅ NVIDIA Container Toolkit 설치 완료${NC}"
+        # 설치 시도
+        if apt-get install -y nvidia-container-toolkit 2>/dev/null; then
+            echo -e "${GREEN}✅ NVIDIA Container Toolkit 설치 완료${NC}"
+        else
+            echo -e "${YELLOW}⚠️  NVIDIA Container Toolkit 설치 실패 (계속 진행)${NC}"
+            echo -e "${YELLOW}   Docker에서 --gpus all 옵션을 사용할 수 없을 수 있습니다.${NC}"
+        fi
     fi
 else
     echo -e "${YELLOW}⚠️  NVIDIA GPU 없음, 건너뜁니다.${NC}"
@@ -176,13 +200,33 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 if [ -S /var/run/docker.sock ]; then
     echo -e "${GREEN}✅ Docker 소켓 이미 존재함${NC}"
     
+    # 소켓 권한 확인 및 설정
+    chmod 666 /var/run/docker.sock 2>/dev/null || true
+    
     # 연결 테스트
     if docker ps > /dev/null 2>&1; then
         echo -e "${GREEN}✅ Docker 데몬 정상 작동 중${NC}"
     else
         echo -e "${YELLOW}⚠️  Docker 데몬 연결 실패, 재시작 시도 중...${NC}"
-        systemctl restart docker 2>/dev/null || dockerd > /tmp/dockerd.log 2>&1 &
-        sleep 5
+        
+        # systemd가 있으면 사용
+        if command -v systemctl &> /dev/null && systemctl is-active --quiet docker 2>/dev/null; then
+            systemctl restart docker
+            sleep 5
+        else
+            # 없으면 직접 시작
+            pkill -x dockerd 2>/dev/null || true
+            sleep 2
+            nohup dockerd > /tmp/dockerd.log 2>&1 &
+            sleep 5
+        fi
+        
+        # 재시도
+        if docker ps > /dev/null 2>&1; then
+            echo -e "${GREEN}✅ Docker 데몬 재시작 성공${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Docker 연결 문제 (계속 진행)${NC}"
+        fi
     fi
 else
     echo -e "${YELLOW}   Docker 소켓 없음, 데몬 시작 중...${NC}"
@@ -190,8 +234,10 @@ else
     # 디렉토리 생성
     mkdir -p /var/run /var/lib/docker /etc/docker
     
-    # daemon.json 생성
-    if command -v nvidia-smi &> /dev/null; then
+    # daemon.json 생성 (간단한 버전)
+    echo -e "${YELLOW}   daemon.json 생성 중...${NC}"
+    if command -v nvidia-smi &> /dev/null && [ -f /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg ]; then
+        # NVIDIA Runtime 포함
         cat > /etc/docker/daemon.json <<'EOF'
 {
     "data-root": "/var/lib/docker",
@@ -211,6 +257,7 @@ else
 }
 EOF
     else
+        # 기본 설정
         cat > /etc/docker/daemon.json <<'EOF'
 {
     "data-root": "/var/lib/docker",
@@ -225,18 +272,31 @@ EOF
     fi
     
     # Docker 데몬 시작
-    if systemctl is-active --quiet docker 2>/dev/null; then
-        systemctl restart docker
+    echo -e "${YELLOW}   Docker 데몬 시작 중...${NC}"
+    
+    # systemd 확인
+    if command -v systemctl &> /dev/null; then
+        if systemctl start docker 2>/dev/null; then
+            echo -e "${GREEN}✅ systemd로 Docker 시작 성공${NC}"
+            sleep 3
+        else
+            echo -e "${YELLOW}   systemd 실패, 직접 시작 중...${NC}"
+            nohup dockerd --host=unix:///var/run/docker.sock --data-root=/var/lib/docker > /tmp/dockerd.log 2>&1 &
+            sleep 5
+        fi
     else
-        # systemd 없으면 직접 시작
-        nohup dockerd --host=unix:///var/run/docker.sock > /tmp/dockerd.log 2>&1 &
+        # systemd 없음
+        echo -e "${YELLOW}   systemd 없음, dockerd 직접 시작 중...${NC}"
+        nohup dockerd --host=unix:///var/run/docker.sock --data-root=/var/lib/docker > /tmp/dockerd.log 2>&1 &
+        sleep 5
     fi
     
-    # 시작 대기
-    echo -e "${YELLOW}   Docker 데몬 시작 대기 중...${NC}"
+    # 소켓 대기
+    echo -e "${YELLOW}   Docker 소켓 생성 대기 중...${NC}"
     for i in {1..30}; do
         if [ -S /var/run/docker.sock ]; then
             chmod 666 /var/run/docker.sock
+            echo -e "${GREEN}✅ Docker 소켓 생성 완료${NC}"
             break
         fi
         sleep 1
@@ -244,14 +304,14 @@ EOF
     done
     echo ""
     
-    # 연결 테스트
-    sleep 3
+    # 최종 확인
+    sleep 2
     if docker ps > /dev/null 2>&1; then
         echo -e "${GREEN}✅ Docker 데몬 시작 완료${NC}"
     else
         echo -e "${RED}❌ Docker 데몬 시작 실패${NC}"
-        echo -e "${YELLOW}   로그: cat /tmp/dockerd.log${NC}"
-        exit 1
+        echo -e "${YELLOW}   로그 확인: cat /tmp/dockerd.log${NC}"
+        echo -e "${YELLOW}   그래도 계속 진행합니다...${NC}"
     fi
 fi
 
@@ -341,9 +401,20 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${BLUE}[7/7] vLLM 서버 시작...${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
+# Docker 연결 최종 확인
+if ! docker ps > /dev/null 2>&1; then
+    echo -e "${RED}❌ Docker에 연결할 수 없습니다.${NC}"
+    echo -e "${YELLOW}   해결 방법:${NC}"
+    echo -e "${CYAN}   1. Docker 데몬 로그 확인: cat /tmp/dockerd.log${NC}"
+    echo -e "${CYAN}   2. Docker 수동 시작: sudo dockerd > /tmp/dockerd.log 2>&1 &${NC}"
+    echo -e "${CYAN}   3. 소켓 권한: sudo chmod 666 /var/run/docker.sock${NC}"
+    exit 1
+fi
+
 # 기존 컨테이너 정리
 echo -e "${YELLOW}   기존 컨테이너 정리 중...${NC}"
 docker compose down 2>/dev/null || true
+sleep 2
 
 # Docker Compose 시작
 echo -e "${YELLOW}   Docker Compose로 시스템 시작 중...${NC}"
@@ -351,14 +422,25 @@ echo -e "${CYAN}   - vLLM 서버 (포트 8000)${NC}"
 echo -e "${CYAN}   - Gradio UI (포트 7860)${NC}"
 echo ""
 
-docker compose up -d
+if docker compose up -d; then
+    echo -e "${GREEN}✅ Docker Compose 시작 성공${NC}"
+else
+    echo -e "${RED}❌ Docker Compose 시작 실패${NC}"
+    echo -e "${YELLOW}   로그 확인: docker compose logs${NC}"
+    exit 1
+fi
 
 # 서비스 시작 대기
 echo -e "${YELLOW}   서비스 시작 대기 중...${NC}"
 sleep 10
 
+# 컨테이너 상태 확인
+echo -e "${YELLOW}   컨테이너 상태 확인 중...${NC}"
+docker compose ps
+
 # vLLM 서버 준비 대기
-echo -e "${YELLOW}   vLLM 서버 준비 대기 중... (모델 로딩 2-3분 소요)${NC}"
+echo ""
+echo -e "${YELLOW}   vLLM 서버 준비 대기 중... (모델 로딩 2-5분 소요)${NC}"
 VLLM_READY=false
 for i in {1..60}; do
     if docker compose exec -T vllm-server curl -sf http://localhost:8000/health > /dev/null 2>&1; then
@@ -366,21 +448,26 @@ for i in {1..60}; do
         break
     fi
     sleep 5
-    echo -n "."
+    if [ $((i % 6)) -eq 0 ]; then
+        echo -e "${CYAN}   $(($i * 5))초 경과... 계속 대기 중${NC}"
+    fi
 done
-echo ""
 
 if [ "$VLLM_READY" = true ]; then
     echo -e "${GREEN}✅ vLLM 서버 준비 완료!${NC}"
 else
     echo -e "${YELLOW}⚠️  vLLM 서버 준비 시간 초과 (백그라운드에서 계속 로딩 중)${NC}"
+    echo -e "${YELLOW}   로그 확인: docker compose logs vllm-server${NC}"
 fi
 
 # Gradio UI 확인
+echo ""
+echo -e "${YELLOW}   Gradio UI 확인 중...${NC}"
 if curl -sf http://localhost:7860 > /dev/null 2>&1; then
     echo -e "${GREEN}✅ Gradio UI 준비 완료!${NC}"
 else
-    echo -e "${YELLOW}⚠️  Gradio UI 준비 중...${NC}"
+    echo -e "${YELLOW}⚠️  Gradio UI 아직 준비 중...${NC}"
+    echo -e "${YELLOW}   로그 확인: docker compose logs hint-app${NC}"
 fi
 
 sleep 2
