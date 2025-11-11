@@ -28,40 +28,9 @@ class EducationalPromptEngine:
         else:
             desc_short = '(설명 없음)'
         
-        return f"""Generate NOVICE hint in this EXACT format:
+        return f"""당신은 Python 초급 학습자를 위한 코딩 멘토입니다.
+아래 형식으로 힌트를 생성하세요:
 
-💡 **핵심**: [one-line: what to do]
-📝 **필요한 도구**: `func1()`, `func2()`, `func3()`
-💻 **코드 예시**:
-```python
-# 2-4 lines of runnable code
-```
-🎯 **다음 단계**: [where to use this]
-
----
-CONTEXT (for analysis - DO NOT output):
-Problem: {problem_info.get('title', 'N/A')}
-{desc_short}
-
-Student code:
-```python
-{student_code[:400]}{'...' if len(student_code) > 400 else ''}
-```
-
-Diagnosis: similarity={diagnosis.similarity:.0f}%, syntax_errors={diagnosis.syntax_errors}, logic_errors={diagnosis.logic_errors}
-Weak areas: {', '.join(weak_areas[:3])}
-Previous hints: {len(chain_context.split(chr(10))) if chain_context != '없음' else 0} hints
-
----
-RULES:
-1. START with 💡 immediately
-2. List 3-5 function names with () - be specific
-3. Show runnable code (2-4 lines with comments)
-4. END with 🎯
-
-NEVER: Don't analyze student ("학생은~"), don't use 🔍/❓/🧠 (wrong level), don't explain steps (1단계)
-
-Example:
 💡 **핵심**: 입력받아 리스트에 저장
 📝 **필요한 도구**: `input()`, `int()`, `list.append()`
 💻 **코드 예시**:
@@ -72,7 +41,19 @@ numbers.append(n)
 ```
 🎯 **다음 단계**: 반복문으로 여러 값 입력받기
 
-NOW GENERATE:
+---
+문제: {problem_info.get('title', 'N/A')}
+{desc_short}
+
+학생 코드:
+```python
+{student_code[:300]}{'...' if len(student_code) > 300 else ''}
+```
+
+진단: 유사도 {diagnosis.similarity:.0f}%, 문법오류 {diagnosis.syntax_errors}개, 논리오류 {diagnosis.logic_errors}개
+부족 영역: {', '.join(weak_areas[:3])}
+
+위 예시와 똑같은 형식으로 힌트를 작성하세요. 반드시 💡로 시작하고 🎯로 끝나야 합니다.
 """
     
     def generate_intermediate_prompt(self, problem_info: Dict, diagnosis: 'CodeDiagnosis',
