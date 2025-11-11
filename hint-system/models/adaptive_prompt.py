@@ -89,18 +89,21 @@ class AdaptivePromptGenerator:
         # Chain 컨텍스트
         chain_context = chain.get_history_context()
         
-        # 교육학적 프롬프트 생성
+        print(f"[AdaptivePromptGenerator] student_code 길이: {len(student_code)} chars")
+        print(f"[AdaptivePromptGenerator] student_code preview: {student_code[:200]}")
+        
+        # 교육학적 프롬프트 생성 (학생 코드 포함!)
         if selected_level == 'novice':
             prompt = self.edu_engine.generate_novice_prompt(
-                problem_info, diagnosis, weak_areas, chain_context
+                problem_info, diagnosis, weak_areas, chain_context, student_code
             )
         elif selected_level == 'intermediate':
             prompt = self.edu_engine.generate_intermediate_prompt(
-                problem_info, diagnosis, weak_areas, chain_context
+                problem_info, diagnosis, weak_areas, chain_context, student_code
             )
         else:  # advanced
             prompt = self.edu_engine.generate_advanced_prompt(
-                problem_info, diagnosis, weak_areas, chain_context
+                problem_info, diagnosis, weak_areas, chain_context, student_code
             )
         
         return prompt
