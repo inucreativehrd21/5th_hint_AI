@@ -379,10 +379,15 @@ class VLLMHintApp:
 
 """
         
-        # 에스컬레이션 경고
-        if chain.same_level_count >= 2:
-            output += f"""
-⚠️ **알림:** 동일 난이도({level_name.get(chain.current_level, chain.current_level)})에서 {chain.same_level_count}회 힌트를 요청했습니다.
+        # 에스컬레이션 경고 (실제 데이터로 계산)
+        if len(chain.hints) >= 2:
+            # 마지막 2개 힌트의 레벨 확인
+            recent_levels = [h.level for h in chain.hints[-2:]]
+            if len(set(recent_levels)) == 1:  # 모두 같은 레벨
+                current_level = recent_levels[0]
+                same_count = sum(1 for h in chain.hints if h.level == current_level)
+                output += f"""
+⚠️ **알림:** 동일 난이도({level_name.get(current_level, current_level)})에서 {same_count}회 힌트를 요청했습니다.
 다음 힌트 요청 시 자동으로 다음 단계로 상승합니다! 💪
 """
         
