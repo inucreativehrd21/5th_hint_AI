@@ -696,22 +696,22 @@ def create_vllm_ui(app: VLLMHintApp):
         # 3. 난이도별 힌트 생성 버튼 (리팩토링 V3 - 교육학적 + 보안)
         # 초급 힌트
         hint_btn_novice.click(
-            fn=lambda code, temp, pid, req: app.generate_hint(code, temp, pid, 'novice', user_id=req.username if req else "anonymous"),
-            inputs=[user_code, temperature_slider, current_problem_id, gr.Request],
+            fn=lambda code, temp, pid: app.generate_hint(code, temp, pid, 'novice', user_id="anonymous"),
+            inputs=[user_code, temperature_slider, current_problem_id],
             outputs=[hint_output, metrics_output, history_output]
         )
         
         # 중급 힌트
         hint_btn_intermediate.click(
-            fn=lambda code, temp, pid, req: app.generate_hint(code, temp, pid, 'intermediate', user_id=req.username if req else "anonymous"),
-            inputs=[user_code, temperature_slider, current_problem_id, gr.Request],
+            fn=lambda code, temp, pid: app.generate_hint(code, temp, pid, 'intermediate', user_id="anonymous"),
+            inputs=[user_code, temperature_slider, current_problem_id],
             outputs=[hint_output, metrics_output, history_output]
         )
         
         # 고급 힌트
         hint_btn_advanced.click(
-            fn=lambda code, temp, pid, req: app.generate_hint(code, temp, pid, 'advanced', user_id=req.username if req else "anonymous"),
-            inputs=[user_code, temperature_slider, current_problem_id, gr.Request],
+            fn=lambda code, temp, pid: app.generate_hint(code, temp, pid, 'advanced', user_id="anonymous"),
+            inputs=[user_code, temperature_slider, current_problem_id],
             outputs=[hint_output, metrics_output, history_output]
         )
 
