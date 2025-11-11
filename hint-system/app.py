@@ -262,6 +262,7 @@ class VLLMHintApp:
             )
             
             print(f"   프롬프트 길이: {len(prompt)} 글자")
+            print(f"   프롬프트 첫 500자: {prompt[:500]}...")
             
             # === 단계 3: vLLM 추론 ===
             print("🤖 [단계 3] vLLM 추론 중...")

@@ -425,13 +425,22 @@ class VLLMInference(ModelInference):
                 'finish_reason': str  # 완료 이유 (stop, length, etc.)
             }
         """
+        # system_prompt는 사용하지 않고, 전체 프롬프트를 user message로 전달
+        # (교육학적 프롬프트 엔진이 생성한 상세한 지시사항이 prompt에 포함되어 있음)
         if system_prompt is None:
-            system_prompt = """당신은 소크라테스식 프로그래밍 멘토입니다.
-학생에게 직접적인 답을 주지 말고, 스스로 생각하고 발견하도록 질문과 힌트를 제공하세요.
-절대로 코드의 함수명, 변수명을 직접 언급하지 마세요."""
+            system_prompt = "당신은 코딩 교육 전문가입니다. 아래 지시사항을 정확히 따라주세요."
 
         try:
             start_time = time.time()
+            
+            # 디버깅: 요청 정보 로그
+            print(f"\n[VLLMInference] 요청 시작")
+            print(f"  Model: {self.model_name}")
+            print(f"  Temperature: {temperature}")
+            print(f"  Max tokens: {max_tokens}")
+            print(f"  System prompt: {system_prompt[:100]}...")
+            print(f"  User prompt length: {len(prompt)} chars")
+            print(f"  User prompt preview: {prompt[:200]}...")
 
             # OpenAI Chat Completions API 호출 (vLLM이 호환 지원)
             response = self.client.chat.completions.create(
@@ -455,6 +464,14 @@ class VLLMInference(ModelInference):
             # 토큰 사용량 및 완료 이유 추출
             tokens_used = response.usage.completion_tokens if response.usage else 0
             finish_reason = response.choices[0].finish_reason
+            
+            # 디버깅: 응답 정보 로그
+            print(f"[VLLMInference] 응답 완료")
+            print(f"  Elapsed time: {elapsed:.2f}s")
+            print(f"  Tokens generated: {tokens_used}")
+            print(f"  Finish reason: {finish_reason}")
+            print(f"  Hint length: {len(hint)} chars")
+            print(f"  Hint preview: {hint[:300]}...")
 
             return {
                 'hint': hint,

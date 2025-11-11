@@ -46,6 +46,10 @@ class EducationalPromptEngine:
         4. Cognitive Load Management (인지 부하 관리)
         """
         
+        print(f"\n[EducationalPromptEngine] 초급(Novice) 프롬프트 생성")
+        print(f"  부족한 영역: {weak_areas}")
+        print(f"  진단: 유사도={diagnosis.similarity:.1f}%, 문법오류={diagnosis.syntax_errors}, 논리오류={diagnosis.logic_errors}")
+        
         return f"""=== 초급 힌트 생성 시스템 (Novice Level) ===
 
 당신은 **코딩 교육 전문가**입니다. 초보 학습자를 위한 명시적이고 구체적인 힌트를 제공합니다.
@@ -199,6 +203,10 @@ print(total)
         3. Problem-Solving Strategies (문제 해결 전략)
         4. Metacognitive Prompts (메타인지 촉진)
         """
+        
+        print(f"\n[EducationalPromptEngine] 중급(Intermediate) 프롬프트 생성")
+        print(f"  부족한 영역: {weak_areas}")
+        print(f"  진단: 유사도={diagnosis.similarity:.1f}%, 문법오류={diagnosis.syntax_errors}, 논리오류={diagnosis.logic_errors}")
         
         return f"""=== 중급 힌트 생성 시스템 (Intermediate Level) ===
 
@@ -361,6 +369,10 @@ for i in range(len(arr)):
         3. Critical Thinking (비판적 사고)
         4. Deep Metacognition (심화 메타인지)
         """
+        
+        print(f"\n[EducationalPromptEngine] 고급(Advanced) 프롬프트 생성")
+        print(f"  부족한 영역: {weak_areas}")
+        print(f"  진단: 유사도={diagnosis.similarity:.1f}%, 문법오류={diagnosis.syntax_errors}, 논리오류={diagnosis.logic_errors}")
         
         return f"""=== 고급 힌트 생성 시스템 (Advanced Level) ===
 
