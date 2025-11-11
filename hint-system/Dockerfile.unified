@@ -105,5 +105,6 @@ cd /app\n\
 python3 app.py --server-name 0.0.0.0 --server-port 7860\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
-# 컨테이너 시작 명령
+# 컨테이너 시작 명령 (RunPod 호환)
+ENTRYPOINT ["/bin/bash"]
 CMD ["/app/start.sh"]
