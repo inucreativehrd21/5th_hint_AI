@@ -50,29 +50,32 @@ EXPOSE 8000 7860
 
 # 시작 스크립트 생성
 RUN echo '#!/bin/bash\n\
-set -e\n\
 \n\
-echo "🚀 Starting vLLM + Gradio Hint System..."\n\
-echo "========================================"\n\
-echo "📦 Model: Qwen/Qwen2.5-Coder-7B-Instruct"\n\
-echo "💾 GPU Memory: 90%"\n\
-echo "========================================"\n\
+echo "=========================================="\n\
+echo "🚀 vLLM + Gradio Hint System Starting..."\n\
+echo "=========================================="\n\
+echo "Time: $(date)"\n\
+echo "Model: Qwen/Qwen2.5-Coder-7B-Instruct"\n\
+echo "GPU Memory: 90%"\n\
+echo "=========================================="\n\
+echo ""\n\
 \n\
-# 환경 변수 강제 설정 (캐시 무시)\n\
+# 환경 변수 설정\n\
 export VLLM_MODEL="Qwen/Qwen2.5-Coder-7B-Instruct"\n\
 export VLLM_MODEL_NAME="Qwen/Qwen2.5-Coder-7B-Instruct"\n\
 export DEFAULT_MODEL="Qwen/Qwen2.5-Coder-7B-Instruct"\n\
 export HF_HOME=/root/.cache/huggingface\n\
 \n\
-# 기존 캐시 확인\n\
-echo "📂 Checking model cache..."\n\
-if [ -d "/root/.cache/huggingface/hub" ]; then\n\
-  ls -lh /root/.cache/huggingface/hub/ 2>/dev/null || echo "  (empty or no access)"\n\
-fi\n\
+echo "📂 Model cache directory:"\n\
+ls -lh /root/.cache/huggingface/hub/ 2>/dev/null || echo "  (not yet cached)"\n\
+echo ""\n\
 \n\
-# vLLM 서버 시작 (백그라운드)\n\
-echo "📦 Starting vLLM server on port 8000..."\n\
-echo "   Model: Qwen/Qwen2.5-Coder-7B-Instruct (FORCED)"\n\
+# vLLM 서버 시작\n\
+echo "📦 Starting vLLM server..."\n\
+echo "   Port: 8000"\n\
+echo "   Model: Qwen/Qwen2.5-Coder-7B-Instruct"\n\
+echo "   Log: /app/vllm.log"\n\
+\n\
 nohup python3 -m vllm.entrypoints.openai.api_server \\\n\
   --model "Qwen/Qwen2.5-Coder-7B-Instruct" \\\n\
   --served-model-name "Qwen/Qwen2.5-Coder-7B-Instruct" \\\n\
@@ -85,40 +88,57 @@ nohup python3 -m vllm.entrypoints.openai.api_server \\\n\
 \n\
 VLLM_PID=$!\n\
 echo "✅ vLLM server started (PID: $VLLM_PID)"\n\
-echo "   Log: /app/vllm.log"\n\
+echo ""\n\
 \n\
-# vLLM 프로세스 살아있는지 확인\n\
-sleep 3\n\
-if ! kill -0 $VLLM_PID 2>/dev/null; then\n\
-  echo "❌ vLLM server failed to start! Check /app/vllm.log"\n\
-  tail -50 /app/vllm.log\n\
-  exit 1\n\
+# vLLM 프로세스 확인\n\
+sleep 5\n\
+if kill -0 $VLLM_PID 2>/dev/null; then\n\
+  echo "✅ vLLM process is running"\n\
+else\n\
+  echo "❌ vLLM failed to start!"\n\
+  echo "Last 30 lines of log:"\n\
+  tail -30 /app/vllm.log 2>/dev/null || echo "No log file"\n\
+  echo ""\n\
+  echo "⚠️  Continuing anyway (will retry connection)..."\n\
 fi\n\
+echo ""\n\
 \n\
-# vLLM 서버 준비 대기\n\
-echo "⏳ Waiting for vLLM server to be ready..."\n\
-for i in {1..60}; do\n\
+# vLLM 서버 준비 대기 (타임아웃 5분)\n\
+echo "⏳ Waiting for vLLM server health check..."\n\
+WAIT_COUNT=0\n\
+MAX_WAIT=60\n\
+while [ $WAIT_COUNT -lt $MAX_WAIT ]; do\n\
   if curl -s http://localhost:8000/health > /dev/null 2>&1; then\n\
     echo "✅ vLLM server is ready!"\n\
     break\n\
   fi\n\
-  if ! kill -0 $VLLM_PID 2>/dev/null; then\n\
-    echo "❌ vLLM process died! Check /app/vllm.log"\n\
-    tail -50 /app/vllm.log\n\
-    exit 1\n\
+  WAIT_COUNT=$((WAIT_COUNT + 1))\n\
+  if [ $((WAIT_COUNT % 6)) -eq 0 ]; then\n\
+    echo "   Still waiting... ($((WAIT_COUNT * 5))s / $((MAX_WAIT * 5))s)"\n\
+    if ! kill -0 $VLLM_PID 2>/dev/null; then\n\
+      echo "   ⚠️  vLLM process died, check /app/vllm.log"\n\
+    fi\n\
   fi\n\
   sleep 5\n\
-  if [ $((i % 6)) -eq 0 ]; then\n\
-    echo "   Still waiting... ($((i * 5))s)"\n\
-  fi\n\
 done\n\
 \n\
-# Gradio UI 시작 (포그라운드)\n\
-echo "🎨 Starting Gradio UI on port 7860..."\n\
-cd /app\n\
+if [ $WAIT_COUNT -eq $MAX_WAIT ]; then\n\
+  echo "⚠️  vLLM health check timeout (continuing anyway)"\n\
+  echo "Last 20 lines of vLLM log:"\n\
+  tail -20 /app/vllm.log 2>/dev/null || echo "No log file"\n\
+fi\n\
+echo ""\n\
+\n\
+# Gradio UI 시작\n\
+echo "🎨 Starting Gradio UI..."\n\
+echo "   Port: 7860"\n\
+echo "   Server: 0.0.0.0"\n\
+echo "=========================================="\n\
+echo ""\n\
+\n\
+cd /app || exit 1\n\
 exec python3 app.py --server-name 0.0.0.0 --server-port 7860\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
-# 컨테이너 시작 명령 (RunPod 호환)
-ENTRYPOINT ["/bin/bash"]
-CMD ["/app/start.sh"]
+# RunPod 호환 시작 명령 (간단한 방식)
+CMD ["/bin/bash", "-c", "/app/start.sh"]
