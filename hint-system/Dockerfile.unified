@@ -140,5 +140,6 @@ cd /app || exit 1\n\
 exec python3 app.py --server-name 0.0.0.0 --server-port 7860\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
-# RunPod 호환 시작 명령 (간단한 방식)
-CMD ["/bin/bash", "-c", "/app/start.sh"]
+# vLLM 베이스 이미지의 ENTRYPOINT 완전히 오버라이드
+ENTRYPOINT []
+CMD ["/bin/bash", "/app/start.sh"]
