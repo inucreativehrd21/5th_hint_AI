@@ -18,12 +18,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt /app/requirements.txt
 
 # vLLM 호환성을 위한 패키지 업그레이드 (강제)
-# transformers 먼저 최신 버전으로 업그레이드 후 vLLM 재설치
-RUN pip install --no-cache-dir --force-reinstall --no-deps \
-    transformers==4.46.3 \
-    && pip install --no-cache-dir --upgrade \
-    vllm \
-    && rm -rf /root/.cache/pip
+# 기존 transformers 제거 → 원하는 버전 설치 → vllm 재설치(의존성 무시)
+RUN pip uninstall -y transformers || true \
+ && pip install --no-cache-dir transformers==4.46.3 \
+ && pip install --no-cache-dir --no-deps --force-reinstall vllm \
+ && python - <<'PY'\n+import transformers, vllm\n+print('TRANSFORMERS_VERSION=' + transformers.__version__)\n+print('VLLM_VERSION=' + vllm.__version__)\n+PY \
+ && rm -rf /root/.cache/pip
 
 # Gradio 및 앱 의존성 설치 (pip 캐시 제거)
 RUN pip install --no-cache-dir \
