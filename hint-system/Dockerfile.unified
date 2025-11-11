@@ -53,11 +53,14 @@ set -e\n\
 \n\
 echo "🚀 Starting vLLM + Gradio Hint System..."\n\
 echo "========================================"\n\
+echo "📦 Model: Qwen/Qwen2.5-Coder-7B-Instruct"\n\
+echo "💾 GPU Memory: 90%"\n\
+echo "========================================"\n\
 \n\
 # vLLM 서버 시작 (백그라운드)\n\
 echo "📦 Starting vLLM server on port 8000..."\n\
 python3 -m vllm.entrypoints.openai.api_server \\\n\
-  --model ${VLLM_MODEL_NAME} \\\n\
+  --model Qwen/Qwen2.5-Coder-7B-Instruct \\\n\
   --host 0.0.0.0 \\\n\
   --port 8000 \\\n\
   --dtype auto \\\n\
