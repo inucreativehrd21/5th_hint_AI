@@ -456,10 +456,19 @@ class VLLMInference(ModelInference):
                 'finish_reason': str  # 완료 이유 (stop, length, etc.)
             }
         """
-        # system_prompt는 사용하지 않고, 전체 프롬프트를 user message로 전달
-        # (교육학적 프롬프트 엔진이 생성한 상세한 지시사항이 prompt에 포함되어 있음)
+        # system_prompt 강화: 형식 준수 강제
         if system_prompt is None:
-            system_prompt = "당신은 코딩 교육 전문가입니다. 아래 지시사항을 정확히 따라주세요."
+            system_prompt = """당신은 Python 코딩 교육 전문가입니다.
+
+⚠️ 중요: 아래 규칙을 반드시 따르세요:
+
+1. 사용자 메시지에 지정된 **출력 형식만 사용**하세요
+2. "학생은 ~", "진단 결과에서 ~", "1단계:", "2단계:" 같은 **분석/설명 절대 금지**
+3. 이모지로 시작하는 형식(💡, 📝, 💻, 🧠, 📊, 🔍, ❓)만 출력하세요
+4. 학생 코드를 분석하되, **분석 내용을 출력하지 마세요**
+5. **지정된 형식 외의 모든 내용 생략**하세요
+
+출력 시작은 반드시 이모지(💡, 🧠, 🔍)로 시작해야 합니다."""
 
         try:
             start_time = time.time()
