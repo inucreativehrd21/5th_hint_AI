@@ -2,6 +2,7 @@
 다양한 모델로부터 힌트를 생성하는 백엔드
 """
 import time
+import re
 from typing import Dict, List, Optional
 import requests
 from openai import OpenAI
@@ -364,6 +365,36 @@ class VLLMInference(ModelInference):
 
         # 서버 연결 확인
         self._check_server_health()
+    
+    def _extract_output_from_cot(self, hint: str) -> str:
+        """
+        CoT 파싱: <output> 태그에서 실제 힌트 추출
+        
+        Args:
+            hint: 모델의 원본 응답 (CoT 포함 가능)
+        
+        Returns:
+            str: 파싱된 힌트 (태그 제거)
+        """
+        # <output>...</output> 태그 찾기 (멀티라인 지원)
+        output_match = re.search(r'<output>(.*?)</output>', hint, re.DOTALL | re.IGNORECASE)
+        
+        if output_match:
+            extracted = output_match.group(1).strip()
+            print(f"[CoT] <output> 태그 발견 - 파싱 완료 ({len(extracted)} chars)")
+            
+            # <thinking> 부분도 로그로 남기기 (디버깅용)
+            thinking_match = re.search(r'<thinking>(.*?)</thinking>', hint, re.DOTALL | re.IGNORECASE)
+            if thinking_match:
+                thinking_content = thinking_match.group(1).strip()
+                print(f"[CoT] <thinking> 내용 ({len(thinking_content)} chars):")
+                print(f"  {thinking_content[:200]}...")
+            
+            return extracted
+        else:
+            # 태그가 없으면 원본 그대로 반환 (fallback)
+            print(f"[CoT] <output> 태그 없음 - 원본 응답 사용")
+            return hint
 
     def _check_server_health(self) -> bool:
         """vLLM 서버 health check"""
@@ -460,6 +491,9 @@ class VLLMInference(ModelInference):
 
             hint = response.choices[0].message.content.strip()
             elapsed = time.time() - start_time
+
+            # CoT 파싱: <output> 태그 추출 (있으면)
+            hint = self._extract_output_from_cot(hint)
 
             # 토큰 사용량 및 완료 이유 추출
             tokens_used = response.usage.completion_tokens if response.usage else 0
