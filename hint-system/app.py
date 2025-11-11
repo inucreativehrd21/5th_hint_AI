@@ -333,7 +333,7 @@ class VLLMHintApp:
     
     def _format_hint_history(self, problem_id: str) -> str:
         """힌트 히스토리 포맷팅"""
-        chain = self.prompt_generator.chains.get(problem_id)
+        chain = self.prompt_generator.hint_chains.get(problem_id)
         
         if not chain or not chain.hints:
             return """# 📚 힌트 히스토리

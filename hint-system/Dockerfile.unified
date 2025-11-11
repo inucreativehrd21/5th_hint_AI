@@ -38,6 +38,7 @@ COPY . /app
 
 # 환경 변수 설정
 ENV VLLM_API_BASE=http://127.0.0.1:8000/v1
+ENV VLLM_MODEL=Qwen/Qwen2.5-Coder-7B-Instruct
 ENV VLLM_MODEL_NAME=Qwen/Qwen2.5-Coder-7B-Instruct
 ENV HF_HOME=/root/.cache/huggingface
 ENV VLLM_SERVER_URL=http://127.0.0.1:8000/v1

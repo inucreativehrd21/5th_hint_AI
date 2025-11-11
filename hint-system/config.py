@@ -61,7 +61,7 @@ class Config:
     # ============================================================================
     # Model Configuration
     # ============================================================================
-    DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "Qwen2.5-Coder-1.5B")
+    DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "Qwen/Qwen2.5-Coder-7B-Instruct")
 
     # ============================================================================
     # Generation Parameters
