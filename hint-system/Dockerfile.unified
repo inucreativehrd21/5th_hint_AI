@@ -56,13 +56,13 @@ echo "========================================"\n\
 \n\
 # vLLM 서버 시작 (백그라운드)\n\
 echo "📦 Starting vLLM server on port 8000..."\n\
-python -m vllm.entrypoints.openai.api_server \\\n\
+python3 -m vllm.entrypoints.openai.api_server \\\n\
   --model ${VLLM_MODEL_NAME} \\\n\
   --host 0.0.0.0 \\\n\
   --port 8000 \\\n\
   --dtype auto \\\n\
   --max-model-len 4096 \\\n\
-  --gpu-memory-utilization 0.85 \\\n\
+  --gpu-memory-utilization 0.90 \\\n\
   --trust-remote-code &\n\
 \n\
 VLLM_PID=$!\n\
@@ -84,7 +84,7 @@ done\n\
 # Gradio UI 시작 (포그라운드)\n\
 echo "🎨 Starting Gradio UI on port 7860..."\n\
 cd /app\n\
-python app.py --server-name 0.0.0.0 --server-port 7860\n\
+python3 app.py --server-name 0.0.0.0 --server-port 7860\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
 # 컨테이너 시작 명령

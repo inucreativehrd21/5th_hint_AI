@@ -282,16 +282,6 @@ class VLLMHintApp:
             
             # === 단계 4: 힌트 품질 검증 ===
             print("🔍 [단계 4] 힌트 품질 검증 중...")
-            validation = self.validator.validate_hint(raw_hint, diagnosis.level)
-            
-            # 자동 수정 시도
-            if not validation.is_valid:
-                print("⚠️  품질 검증 실패, 자동 수정 시도...")
-                raw_hint = self.validator.auto_fix_hint(raw_hint, diagnosis.level)
-                validation = self.validator.validate_hint(raw_hint, diagnosis.level)
-            
-            # === 단계 4: 힌트 품질 검증 ===
-            print("🔍 [단계 4] 힌트 품질 검증 중...")
             validation = self.validator.validate_hint(raw_hint, selected_level)
             
             # 자동 수정 시도
@@ -748,8 +738,8 @@ if __name__ == "__main__":
         args.no_browser = True
         print("🐳 Docker/RunPod 환경 감지됨")
         if is_runpod:
-            args.share = True
-            print("🚀 RunPod 환경: 공개 링크 생성")
+            args.share = False  # RunPod proxy 사용, share 터널 비활성화
+            print("🚀 RunPod 환경: RunPod proxy 사용 (share 비활성화)")
 
     # 포트 설정
     if args.server_port is None:
