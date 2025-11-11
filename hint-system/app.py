@@ -371,7 +371,7 @@ class VLLMHintApp:
 <details>
 <summary>힌트 내용 보기</summary>
 
-{record.hint}
+{record.hint_text}
 
 </details>
 

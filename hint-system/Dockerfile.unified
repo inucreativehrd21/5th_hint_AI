@@ -58,10 +58,24 @@ echo "📦 Model: Qwen/Qwen2.5-Coder-7B-Instruct"\n\
 echo "💾 GPU Memory: 90%"\n\
 echo "========================================"\n\
 \n\
+# 환경 변수 강제 설정 (캐시 무시)\n\
+export VLLM_MODEL="Qwen/Qwen2.5-Coder-7B-Instruct"\n\
+export VLLM_MODEL_NAME="Qwen/Qwen2.5-Coder-7B-Instruct"\n\
+export DEFAULT_MODEL="Qwen/Qwen2.5-Coder-7B-Instruct"\n\
+export HF_HOME=/root/.cache/huggingface\n\
+\n\
+# 기존 캐시 확인\n\
+echo "📂 Checking model cache..."\n\
+if [ -d "/root/.cache/huggingface/hub" ]; then\n\
+  ls -lh /root/.cache/huggingface/hub/ || true\n\
+fi\n\
+\n\
 # vLLM 서버 시작 (백그라운드)\n\
 echo "📦 Starting vLLM server on port 8000..."\n\
+echo "   Model: Qwen/Qwen2.5-Coder-7B-Instruct (FORCED)"\n\
 python3 -m vllm.entrypoints.openai.api_server \\\n\
-  --model Qwen/Qwen2.5-Coder-7B-Instruct \\\n\
+  --model "Qwen/Qwen2.5-Coder-7B-Instruct" \\\n\
+  --served-model-name "Qwen/Qwen2.5-Coder-7B-Instruct" \\\n\
   --host 0.0.0.0 \\\n\
   --port 8000 \\\n\
   --dtype auto \\\n\
