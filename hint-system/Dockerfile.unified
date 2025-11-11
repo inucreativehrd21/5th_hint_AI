@@ -67,13 +67,13 @@ export HF_HOME=/root/.cache/huggingface\n\
 # 기존 캐시 확인\n\
 echo "📂 Checking model cache..."\n\
 if [ -d "/root/.cache/huggingface/hub" ]; then\n\
-  ls -lh /root/.cache/huggingface/hub/ || true\n\
+  ls -lh /root/.cache/huggingface/hub/ 2>/dev/null || echo "  (empty or no access)"\n\
 fi\n\
 \n\
 # vLLM 서버 시작 (백그라운드)\n\
 echo "📦 Starting vLLM server on port 8000..."\n\
 echo "   Model: Qwen/Qwen2.5-Coder-7B-Instruct (FORCED)"\n\
-python3 -m vllm.entrypoints.openai.api_server \\\n\
+nohup python3 -m vllm.entrypoints.openai.api_server \\\n\
   --model "Qwen/Qwen2.5-Coder-7B-Instruct" \\\n\
   --served-model-name "Qwen/Qwen2.5-Coder-7B-Instruct" \\\n\
   --host 0.0.0.0 \\\n\
@@ -81,10 +81,19 @@ python3 -m vllm.entrypoints.openai.api_server \\\n\
   --dtype auto \\\n\
   --max-model-len 4096 \\\n\
   --gpu-memory-utilization 0.90 \\\n\
-  --trust-remote-code &\n\
+  --trust-remote-code > /app/vllm.log 2>&1 &\n\
 \n\
 VLLM_PID=$!\n\
 echo "✅ vLLM server started (PID: $VLLM_PID)"\n\
+echo "   Log: /app/vllm.log"\n\
+\n\
+# vLLM 프로세스 살아있는지 확인\n\
+sleep 3\n\
+if ! kill -0 $VLLM_PID 2>/dev/null; then\n\
+  echo "❌ vLLM server failed to start! Check /app/vllm.log"\n\
+  tail -50 /app/vllm.log\n\
+  exit 1\n\
+fi\n\
 \n\
 # vLLM 서버 준비 대기\n\
 echo "⏳ Waiting for vLLM server to be ready..."\n\
@@ -92,6 +101,11 @@ for i in {1..60}; do\n\
   if curl -s http://localhost:8000/health > /dev/null 2>&1; then\n\
     echo "✅ vLLM server is ready!"\n\
     break\n\
+  fi\n\
+  if ! kill -0 $VLLM_PID 2>/dev/null; then\n\
+    echo "❌ vLLM process died! Check /app/vllm.log"\n\
+    tail -50 /app/vllm.log\n\
+    exit 1\n\
   fi\n\
   sleep 5\n\
   if [ $((i % 6)) -eq 0 ]; then\n\
@@ -102,7 +116,7 @@ done\n\
 # Gradio UI 시작 (포그라운드)\n\
 echo "🎨 Starting Gradio UI on port 7860..."\n\
 cd /app\n\
-python3 app.py --server-name 0.0.0.0 --server-port 7860\n\
+exec python3 app.py --server-name 0.0.0.0 --server-port 7860\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
 # 컨테이너 시작 명령 (RunPod 호환)
