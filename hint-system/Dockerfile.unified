@@ -17,12 +17,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Python 패키지 의존성 파일 복사
 COPY requirements.txt /app/requirements.txt
 
-# vLLM 호환성을 위한 transformers 업그레이드
-# transformers를 최신 버전(4.46.3)으로 강제 업그레이드
-# vllm은 건드리지 않고 transformers만 교체
-RUN pip install --no-cache-dir --upgrade --force-reinstall \
-    transformers==4.46.3 tokenizers \
-    && python -c "import transformers; print('✅ TRANSFORMERS_VERSION=' + transformers.__version__)" \
+# vLLM 0.11.0 호환성을 위한 transformers 업그레이드
+# vllm 0.11.0은 transformers>=4.55.2 필요
+RUN pip install --no-cache-dir --upgrade \
+    transformers>=4.55.2 \
+    tokenizers>=0.21.1 \
+    && python3 -c "import transformers; print('✅ TRANSFORMERS_VERSION=' + transformers.__version__)" \
     && rm -rf /root/.cache/pip
 
 # Gradio 및 앱 의존성 설치 (pip 캐시 제거)
