@@ -48,98 +48,37 @@ ENV GRADIO_SERVER_PORT=7860
 # 포트 노출
 EXPOSE 8000 7860
 
-# 시작 스크립트 생성
-RUN echo '#!/bin/bash\n\
-\n\
-echo "=========================================="\n\
-echo "🚀 vLLM + Gradio Hint System Starting..."\n\
-echo "=========================================="\n\
+# 간단하고 견고한 시작 스크립트
+RUN printf '#!/bin/bash\n\
+set -x\n\
+echo "=== Starting vLLM + Gradio ==="\n\
 echo "Time: $(date)"\n\
-echo "Model: Qwen/Qwen2.5-Coder-7B-Instruct"\n\
-echo "GPU Memory: 90%"\n\
-echo "=========================================="\n\
-echo ""\n\
 \n\
-# 환경 변수 설정\n\
+# 환경 변수\n\
 export VLLM_MODEL="Qwen/Qwen2.5-Coder-7B-Instruct"\n\
-export VLLM_MODEL_NAME="Qwen/Qwen2.5-Coder-7B-Instruct"\n\
-export DEFAULT_MODEL="Qwen/Qwen2.5-Coder-7B-Instruct"\n\
 export HF_HOME=/root/.cache/huggingface\n\
 \n\
-echo "📂 Model cache directory:"\n\
-ls -lh /root/.cache/huggingface/hub/ 2>/dev/null || echo "  (not yet cached)"\n\
-echo ""\n\
-\n\
-# vLLM 서버 시작\n\
-echo "📦 Starting vLLM server..."\n\
-echo "   Port: 8000"\n\
-echo "   Model: Qwen/Qwen2.5-Coder-7B-Instruct"\n\
-echo "   Log: /app/vllm.log"\n\
-\n\
-nohup python3 -m vllm.entrypoints.openai.api_server \\\n\
+# vLLM 백그라운드 시작\n\
+echo "Starting vLLM server..."\n\
+python3 -m vllm.entrypoints.openai.api_server \\\n\
   --model "Qwen/Qwen2.5-Coder-7B-Instruct" \\\n\
-  --served-model-name "Qwen/Qwen2.5-Coder-7B-Instruct" \\\n\
   --host 0.0.0.0 \\\n\
   --port 8000 \\\n\
-  --dtype auto \\\n\
-  --max-model-len 4096 \\\n\
   --gpu-memory-utilization 0.90 \\\n\
-  --trust-remote-code > /app/vllm.log 2>&1 &\n\
+  --trust-remote-code 2>&1 | tee /app/vllm.log &\n\
 \n\
-VLLM_PID=$!\n\
-echo "✅ vLLM server started (PID: $VLLM_PID)"\n\
-echo ""\n\
+echo "vLLM PID: $!"\n\
 \n\
-# vLLM 프로세스 확인\n\
-sleep 5\n\
-if kill -0 $VLLM_PID 2>/dev/null; then\n\
-  echo "✅ vLLM process is running"\n\
-else\n\
-  echo "❌ vLLM failed to start!"\n\
-  echo "Last 30 lines of log:"\n\
-  tail -30 /app/vllm.log 2>/dev/null || echo "No log file"\n\
-  echo ""\n\
-  echo "⚠️  Continuing anyway (will retry connection)..."\n\
-fi\n\
-echo ""\n\
+# 짧은 대기\n\
+echo "Waiting 15 seconds for vLLM initialization..."\n\
+sleep 15\n\
 \n\
-# vLLM 서버 준비 대기 (타임아웃 5분)\n\
-echo "⏳ Waiting for vLLM server health check..."\n\
-WAIT_COUNT=0\n\
-MAX_WAIT=60\n\
-while [ $WAIT_COUNT -lt $MAX_WAIT ]; do\n\
-  if curl -s http://localhost:8000/health > /dev/null 2>&1; then\n\
-    echo "✅ vLLM server is ready!"\n\
-    break\n\
-  fi\n\
-  WAIT_COUNT=$((WAIT_COUNT + 1))\n\
-  if [ $((WAIT_COUNT % 6)) -eq 0 ]; then\n\
-    echo "   Still waiting... ($((WAIT_COUNT * 5))s / $((MAX_WAIT * 5))s)"\n\
-    if ! kill -0 $VLLM_PID 2>/dev/null; then\n\
-      echo "   ⚠️  vLLM process died, check /app/vllm.log"\n\
-    fi\n\
-  fi\n\
-  sleep 5\n\
-done\n\
-\n\
-if [ $WAIT_COUNT -eq $MAX_WAIT ]; then\n\
-  echo "⚠️  vLLM health check timeout (continuing anyway)"\n\
-  echo "Last 20 lines of vLLM log:"\n\
-  tail -20 /app/vllm.log 2>/dev/null || echo "No log file"\n\
-fi\n\
-echo ""\n\
-\n\
-# Gradio UI 시작\n\
-echo "🎨 Starting Gradio UI..."\n\
-echo "   Port: 7860"\n\
-echo "   Server: 0.0.0.0"\n\
-echo "=========================================="\n\
-echo ""\n\
-\n\
-cd /app || exit 1\n\
+# Gradio 포그라운드 시작 (exec 사용)\n\
+echo "Starting Gradio UI..."\n\
+cd /app\n\
 exec python3 app.py --server-name 0.0.0.0 --server-port 7860\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
-# vLLM 베이스 이미지의 ENTRYPOINT 완전히 오버라이드
+# ENTRYPOINT 완전히 제거
 ENTRYPOINT []
 CMD ["/bin/bash", "/app/start.sh"]
